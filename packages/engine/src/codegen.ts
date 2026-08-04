@@ -49,6 +49,16 @@ export function generateClient(schema: OntologySchema, opts: CodegenOptions): st
     w();
   }
 
+  // 属性名字面量化的过滤/排序类型（编译期锁定属性名——OSDK 防线的关键一环）
+  for (const ot of schema.objectTypes) {
+    const propUnion = ot.properties.map(p => `'${p.apiName}'`).join(' | ');
+    w(`export type ${ot.apiName}Filter =`);
+    w(`  | { property: ${propUnion}; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }`);
+    w(`  | { property: ${propUnion}; op: 'isNull' | 'notNull' };`);
+    w(`export interface ${ot.apiName}QueryOptions { orderBy?: ${propUnion}; desc?: boolean; limit?: number; }`);
+    w();
+  }
+
   for (const ot of schema.objectTypes) {
     const boolProps = ot.properties.filter(p => p.type === 'boolean');
     w(`function decode${ot.apiName}(row: ObjectRow): ${ot.apiName} {`);
@@ -94,8 +104,8 @@ export function generateClient(schema: OntologySchema, opts: CodegenOptions): st
     const names = traverseNames.get(ot.apiName) ?? [];
     const linkUnion = names.length ? names.map(n => `'${n}'`).join(' | ') : 'never';
     w(`      ${ot.apiName}: {`);
-    w(`        query(filters?: Filter[], opts?: QueryOptions): ${ot.apiName}[] {`);
-    w(`          return oss.query('${ot.apiName}', filters, opts).map(decode${ot.apiName});`);
+    w(`        query(filters?: ${ot.apiName}Filter[], opts?: ${ot.apiName}QueryOptions): ${ot.apiName}[] {`);
+    w(`          return oss.query('${ot.apiName}', filters as Filter[] | undefined, opts as QueryOptions | undefined).map(decode${ot.apiName});`);
     w(`        },`);
     w(`        get(pk: ${pkTs}): ${ot.apiName} | undefined {`);
     w(`          const row = store.get('${ot.apiName}', pk);`);

@@ -61,6 +61,36 @@ export interface Alert {
   createdAt: string;
 }
 
+export type StockFilter =
+  | { property: 'code' | 'name' | 'industryCode' | 'latestPrice' | 'marketCapYi' | 'pe' | 'pb' | 'isWatched'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
+  | { property: 'code' | 'name' | 'industryCode' | 'latestPrice' | 'marketCapYi' | 'pe' | 'pb' | 'isWatched'; op: 'isNull' | 'notNull' };
+export interface StockQueryOptions { orderBy?: 'code' | 'name' | 'industryCode' | 'latestPrice' | 'marketCapYi' | 'pe' | 'pb' | 'isWatched'; desc?: boolean; limit?: number; }
+
+export type IndustryFilter =
+  | { property: 'code' | 'name'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
+  | { property: 'code' | 'name'; op: 'isNull' | 'notNull' };
+export interface IndustryQueryOptions { orderBy?: 'code' | 'name'; desc?: boolean; limit?: number; }
+
+export type PortfolioFilter =
+  | { property: 'id' | 'name' | 'initialCash' | 'cash'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
+  | { property: 'id' | 'name' | 'initialCash' | 'cash'; op: 'isNull' | 'notNull' };
+export interface PortfolioQueryOptions { orderBy?: 'id' | 'name' | 'initialCash' | 'cash'; desc?: boolean; limit?: number; }
+
+export type PositionFilter =
+  | { property: 'id' | 'portfolioId' | 'stockCode' | 'quantity' | 'costPrice'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
+  | { property: 'id' | 'portfolioId' | 'stockCode' | 'quantity' | 'costPrice'; op: 'isNull' | 'notNull' };
+export interface PositionQueryOptions { orderBy?: 'id' | 'portfolioId' | 'stockCode' | 'quantity' | 'costPrice'; desc?: boolean; limit?: number; }
+
+export type ResearchNoteFilter =
+  | { property: 'id' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
+  | { property: 'id' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; op: 'isNull' | 'notNull' };
+export interface ResearchNoteQueryOptions { orderBy?: 'id' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; desc?: boolean; limit?: number; }
+
+export type AlertFilter =
+  | { property: 'id' | 'stockCode' | 'condition' | 'status' | 'createdAt'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
+  | { property: 'id' | 'stockCode' | 'condition' | 'status' | 'createdAt'; op: 'isNull' | 'notNull' };
+export interface AlertQueryOptions { orderBy?: 'id' | 'stockCode' | 'condition' | 'status' | 'createdAt'; desc?: boolean; limit?: number; }
+
 function decodeStock(row: ObjectRow): Stock {
   const out = { ...row } as Record<string, unknown>;
   if (out.isWatched !== null && out.isWatched !== undefined) out.isWatched = out.isWatched === 1 || out.isWatched === true;
@@ -133,8 +163,8 @@ export function createClient(schema: OntologySchema, dbPath: string) {
     store,
     objects: {
       Stock: {
-        query(filters?: Filter[], opts?: QueryOptions): Stock[] {
-          return oss.query('Stock', filters, opts).map(decodeStock);
+        query(filters?: StockFilter[], opts?: StockQueryOptions): Stock[] {
+          return oss.query('Stock', filters as Filter[] | undefined, opts as QueryOptions | undefined).map(decodeStock);
         },
         get(pk: string): Stock | undefined {
           const row = store.get('Stock', pk);
@@ -146,8 +176,8 @@ export function createClient(schema: OntologySchema, dbPath: string) {
         count(): number { return store.count('Stock'); },
       },
       Industry: {
-        query(filters?: Filter[], opts?: QueryOptions): Industry[] {
-          return oss.query('Industry', filters, opts).map(decodeIndustry);
+        query(filters?: IndustryFilter[], opts?: IndustryQueryOptions): Industry[] {
+          return oss.query('Industry', filters as Filter[] | undefined, opts as QueryOptions | undefined).map(decodeIndustry);
         },
         get(pk: string): Industry | undefined {
           const row = store.get('Industry', pk);
@@ -159,8 +189,8 @@ export function createClient(schema: OntologySchema, dbPath: string) {
         count(): number { return store.count('Industry'); },
       },
       Portfolio: {
-        query(filters?: Filter[], opts?: QueryOptions): Portfolio[] {
-          return oss.query('Portfolio', filters, opts).map(decodePortfolio);
+        query(filters?: PortfolioFilter[], opts?: PortfolioQueryOptions): Portfolio[] {
+          return oss.query('Portfolio', filters as Filter[] | undefined, opts as QueryOptions | undefined).map(decodePortfolio);
         },
         get(pk: string): Portfolio | undefined {
           const row = store.get('Portfolio', pk);
@@ -172,8 +202,8 @@ export function createClient(schema: OntologySchema, dbPath: string) {
         count(): number { return store.count('Portfolio'); },
       },
       Position: {
-        query(filters?: Filter[], opts?: QueryOptions): Position[] {
-          return oss.query('Position', filters, opts).map(decodePosition);
+        query(filters?: PositionFilter[], opts?: PositionQueryOptions): Position[] {
+          return oss.query('Position', filters as Filter[] | undefined, opts as QueryOptions | undefined).map(decodePosition);
         },
         get(pk: string): Position | undefined {
           const row = store.get('Position', pk);
@@ -185,8 +215,8 @@ export function createClient(schema: OntologySchema, dbPath: string) {
         count(): number { return store.count('Position'); },
       },
       ResearchNote: {
-        query(filters?: Filter[], opts?: QueryOptions): ResearchNote[] {
-          return oss.query('ResearchNote', filters, opts).map(decodeResearchNote);
+        query(filters?: ResearchNoteFilter[], opts?: ResearchNoteQueryOptions): ResearchNote[] {
+          return oss.query('ResearchNote', filters as Filter[] | undefined, opts as QueryOptions | undefined).map(decodeResearchNote);
         },
         get(pk: string): ResearchNote | undefined {
           const row = store.get('ResearchNote', pk);
@@ -198,8 +228,8 @@ export function createClient(schema: OntologySchema, dbPath: string) {
         count(): number { return store.count('ResearchNote'); },
       },
       Alert: {
-        query(filters?: Filter[], opts?: QueryOptions): Alert[] {
-          return oss.query('Alert', filters, opts).map(decodeAlert);
+        query(filters?: AlertFilter[], opts?: AlertQueryOptions): Alert[] {
+          return oss.query('Alert', filters as Filter[] | undefined, opts as QueryOptions | undefined).map(decodeAlert);
         },
         get(pk: string): Alert | undefined {
           const row = store.get('Alert', pk);
