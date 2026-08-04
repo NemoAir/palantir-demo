@@ -1,11 +1,11 @@
 # PROGRESS — palantir-demo（Palantir 本体论学习与实战）
 
 ## 当前焦点
-阶段 1：调研报告初稿已落盘 `docs/ontology-research.md`；deep-research 验证阶段 resume 中（首跑时 75 个验证代理因账号限额全灭，用户升级套餐后重跑），结果回来后升级报告置信标注。
+阶段 1 调研 ✅ 完成（报告已升级为对抗验证版）。当前：阶段 2 题材拍板——候选与推荐已备好，等用户选择。
 
 ## 全景任务清单
-- 🔄 ① 调研 Palantir Ontology（搜索/抓取 ✅ 139 条论断；骨架页亲验 ✅；对抗验证 resume 中）
-- ⬜ ② 选定实战题材（候选已备：A股投研 / 航空运营 / Titan 供应链，需用户拍板）
+- ✅ ① 调研 Palantir Ontology（139 论断 → 25 条对抗验证 75 票 0 反对 → 9 组 high 置信发现；骨架页亲验；报告 `docs/ontology-research.md`）
+- 🔄 ② 选定实战题材（候选已提交用户：A股投研运营台【推荐】/ 航空运营 / Titan 供应链；实战形态同步征询）
 - ⬜ ③ 实战方案设计（本体建模 + 技术选型 + 验收标准）
 - ⬜ ④ 分阶段实现与验证
 
@@ -17,6 +17,8 @@
 - 项目为全新空仓库（仅 .git，无提交）——2026-08-04 实查。
 - core-concepts 页概念定义与 Dataset↔Object type 映射表逐字核验通过；why-ontology 页决策四要素/行动闭环/名词动词隐喻逐字核验通过——2026-08-04 WebFetch 亲验。
 - deep-research 工作流 journal 可复用：34 个成功代理结果在 `journal.jsonl`，resumeFromRunId=wf_16751943-8db。
+- resume 后验证全部完成（108/108 代理成功，0 错误）：25 论断 × 3 票 = 75 票 0 反对，合并为 9 组 high 置信发现——2026-08-04 从 wn15r4wu5.output 实查解析。
+- 验证带回的新一手信息已并入报告：官方明确否认"薄语义层"（架构中心文档）、Ontology Language/Engine/Toolchain 三分、Engine 读写双架构、OAG（Ontology-Augmented Generation）、cybernetic enterprise / decision graph / "from augmentation to automation"、决策数据（decision data）。
 
 ## 未决 / 坑
 - 实战题材未定：需结合研究结论 + 用户兴趣对齐（用户环境装有大量 A 股/港股金融数据技能，金融题材有真实数据源加持；Palantir 官方经典案例为供应链 Titan、航空 Skywise 等）。
