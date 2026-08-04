@@ -1,9 +1,12 @@
 import { defineOntology } from '../packages/engine/src/types.js';
+import { astockActions } from './astock.actions.js';
+import { astockFunctions } from './astock.functions.js';
 
 /**
- * A股投研运营台本体 v1（M1 子集：仅语义层——对象/属性/链接）。
- * 数据域：科创板50 成分股。Action/Function 类型在 M2 加入。
- * 注意：isWatched（自选标记）等"编辑属性"属 M2 编辑机制，M1 不建。
+ * A股投研运营台本体 v1（语义层 + 动能层）。
+ * 数据域：科创板50 成分股。
+ * 语义元素：6 对象类型 + 5 链接类型（企业的"名词"）；
+ * 动能元素：6 Action + 3 Function（企业的"动词"，见 astock.actions/functions）。
  */
 export const astock = defineOntology({
   apiName: 'astock',
@@ -21,6 +24,8 @@ export const astock = defineOntology({
         { apiName: 'marketCapYi', displayName: '总市值(亿)', type: 'number', nullable: true },
         { apiName: 'pe', displayName: '市盈率PE(TTM)', type: 'number', nullable: true },
         { apiName: 'pb', displayName: '市净率PB', type: 'number', nullable: true },
+        // 编辑属性：CSV 无此列（Funnel 报 missingColumns），值只由 addToWatchlist Action 产生
+        { apiName: 'isWatched', displayName: '自选', type: 'boolean', nullable: true },
       ],
       datasource: { kind: 'csv', path: 'stocks.csv' },
     },
@@ -138,4 +143,6 @@ export const astock = defineOntology({
       mapping: { kind: 'foreignKey', property: 'stockCode' },
     },
   ],
+  actionTypes: astockActions,
+  functions: astockFunctions,
 });
