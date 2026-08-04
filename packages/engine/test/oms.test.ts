@@ -3,7 +3,12 @@ import { loadOntology, OntologyValidationError } from '../src/oms.js';
 import { zoo } from './fixtures/zoo.js';
 import type { OntologySchema } from '../src/types.js';
 
-const clone = (): OntologySchema => structuredClone(zoo);
+/** 深克隆声明部分；动能部分（actionTypes/functions 含函数）保持引用——structuredClone 不能克隆函数。 */
+const clone = (): OntologySchema => ({
+  ...zoo,
+  objectTypes: structuredClone(zoo.objectTypes),
+  linkTypes: structuredClone(zoo.linkTypes),
+});
 
 describe('loadOntology', () => {
   it('合法 schema 注册成功，可按名取回', () => {
