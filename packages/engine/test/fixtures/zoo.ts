@@ -15,6 +15,8 @@ export const zoo = defineOntology({
         { apiName: 'name', displayName: '名字', type: 'string' },
         { apiName: 'weightKg', displayName: '体重', type: 'number', nullable: true },
         { apiName: 'keeperId', displayName: '饲养员ID', type: 'string', nullable: true },
+        // 编辑属性：CSV 无此列（Funnel 应报 missingColumns 而非 nulled），值只由 Action 编辑产生
+        { apiName: 'mood', displayName: '情绪', type: 'string', nullable: true },
       ],
       datasource: { kind: 'csv', path: 'animals.csv' },
     },

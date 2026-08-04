@@ -12,6 +12,8 @@ export interface MaterializeReport {
   updated: number;
   skipped: { row: number; reason: string }[];
   nulled: { row: number; property: string; raw: string }[];
+  /** schema 声明了、但 CSV 中不存在的列（如纯编辑属性）——整列置 null，不计 nulled。 */
+  missingColumns: string[];
 }
 
 /** 数据源明确表示"无值"的标记（置空但不计入 nulled 报告；纯空串的数字列除外，见下）。 */
@@ -50,6 +52,12 @@ export function materializeCsv(
     trim: true,
   }) as Record<string, string>[];
 
+  const headerCols = new Set(records.length > 0 ? Object.keys(records[0]) : []);
+  const missingColumns =
+    records.length > 0
+      ? ot.properties.map(p => p.apiName).filter(name => !headerCols.has(name))
+      : [];
+
   const report: MaterializeReport = {
     objectType: ot.apiName,
     csvPath,
@@ -58,7 +66,9 @@ export function materializeCsv(
     updated: 0,
     skipped: [],
     nulled: [],
+    missingColumns,
   };
+  const missing = new Set(missingColumns);
 
   const rows: ObjectRow[] = [];
 
@@ -73,8 +83,8 @@ export function materializeCsv(
       if (EMPTY.has(trimmed)) {
         value = null;
         // 数字列的纯空串是"该有数没有数"（如未盈利企业 PE），进 nulled 报告；
-        // '-'/'null' 等显式无值标记不进报告。
-        if (trimmed === '' && p.type === 'number' && p.nullable)
+        // '-'/'null' 等显式无值标记、以及整列缺失（编辑属性）不进报告。
+        if (trimmed === '' && p.type === 'number' && p.nullable && !missing.has(p.apiName))
           rowNulled.push({ row: rowNo, property: p.apiName, raw });
       } else {
         const conv = convert(raw, p.type);
@@ -107,6 +117,8 @@ export function materializeCsv(
   const result = store.upsertMany(ot.apiName, rows);
   report.inserted = result.inserted;
   report.updated = result.updated;
+  // 源数据覆盖后重放编辑账本 → 已编辑属性以用户编辑为准（Apply User Edits）
+  store.replayEdits(ot.apiName);
   return report;
 }
 
