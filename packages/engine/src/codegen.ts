@@ -30,9 +30,8 @@ export function generateClient(schema: OntologySchema, opts: CodegenOptions): st
   const w = (s = ''): void => { lines.push(s); };
 
   w(`// 自动生成：本体 '${schema.apiName}' 的类型化客户端（engine codegen）。不要手改——重新生成覆盖。`);
-  w(`import Database from 'better-sqlite3';`);
-  w(`import { loadOntology } from '${e}/oms.js';`);
-  w(`import { ObjectStore, type ObjectRow } from '${e}/store.js';`);
+  w(`import { openStore } from '${e}/open.js';`);
+  w(`import { type ObjectRow } from '${e}/store.js';`);
   w(`import { ObjectSetService } from '${e}/oss.js';`);
   w(`import { ActionService, type ActionResult } from '${e}/actions.js';`);
   w(`import { FunctionService } from '${e}/functions.js';`);
@@ -82,8 +81,7 @@ export function generateClient(schema: OntologySchema, opts: CodegenOptions): st
   }
 
   w(`export function createClient(schema: OntologySchema, dbPath: string) {`);
-  w(`  const store = new ObjectStore(new Database(dbPath), loadOntology(schema));`);
-  w(`  store.init();`);
+  w(`  const store = openStore(schema, dbPath);`);
   w(`  const oss = new ObjectSetService(store);`);
   w(`  const actionSvc = new ActionService(store);`);
   w(`  const fnSvc = new FunctionService(store);`);

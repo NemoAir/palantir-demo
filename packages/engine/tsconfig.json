@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "outDir": "dist" },
-  "include": ["src/**/*", "test/**/*", "cli.ts", "../../ontology/**/*"]
+  "include": ["src/**/*", "test/**/*", "cli.ts", "generate-osdk.ts", "../../ontology/**/*", "../../osdk/**/*"]
 }
