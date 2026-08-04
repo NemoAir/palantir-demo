@@ -5,28 +5,13 @@ import Database from 'better-sqlite3';
 import { loadOntology } from './src/oms.js';
 import { ObjectStore } from './src/store.js';
 import { materializeAll } from './src/funnel.js';
-import { ObjectSetService, type Filter } from './src/oss.js';
+import { ObjectSetService } from './src/oss.js';
+import { parseFilterExpr } from './src/filter-parse.js';
 import { astock } from '../../ontology/astock.ontology.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DB_PATH = join(root, 'ontology.db');
 const DATASETS = join(root, 'datasets');
-
-/** 解析 --where "pe<50" / "pe=null" / "pe!=null" / "name~芯" 为 Filter */
-function parseWhere(expr: string): Filter {
-  const m = expr.match(/^(\w+)\s*(!=|>=|<=|=|<|>|~)\s*(.+)$/);
-  if (!m) throw new Error(`bad --where: ${expr}`);
-  const [, property, opRaw, rawValue] = m;
-  if (rawValue === 'null') {
-    if (opRaw === '=') return { property, op: 'isNull' };
-    if (opRaw === '!=') return { property, op: 'notNull' };
-    throw new Error(`bad null comparison: ${expr}`);
-  }
-  const num = Number(rawValue);
-  const value = Number.isFinite(num) && rawValue.trim() !== '' ? num : rawValue;
-  const op = ({ '=': 'eq', '!=': 'neq', '<': 'lt', '<=': 'lte', '>': 'gt', '>=': 'gte', '~': 'contains' } as const)[opRaw]!;
-  return { property, op, value } as Filter;
-}
 
 function open(): { store: ObjectStore; oss: ObjectSetService } {
   const store = new ObjectStore(new Database(DB_PATH), loadOntology(astock));
@@ -65,7 +50,7 @@ switch (cmd) {
       options: { where: { type: 'string', multiple: true }, 'order-by': { type: 'string' }, desc: { type: 'boolean' }, limit: { type: 'string' } },
     });
     const { oss } = open();
-    const rows = oss.query(positionals[0], (values.where ?? []).map(parseWhere), {
+    const rows = oss.query(positionals[0], (values.where ?? []).map(parseFilterExpr), {
       orderBy: values['order-by'], desc: values.desc, limit: values.limit ? Number(values.limit) : undefined,
     });
     console.table(rows);
