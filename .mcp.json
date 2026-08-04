@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "astock-ontology": {
+      "command": "pnpm",
+      "args": ["--filter", "mcp", "start"]
+    }
+  }
+}
