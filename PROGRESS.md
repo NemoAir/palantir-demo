@@ -1,14 +1,14 @@
 # PROGRESS — palantir-demo（Palantir 本体论学习与实战）
 
 ## 当前焦点
-阶段 4 前置：writing-plans 制定实现计划（spec 已获用户审阅通过并按反馈修订）。计划产出后按 M1→M5 里程碑实现。
+M1 实施（回滚重做）：2026-08-04 用户指令回滚至 068ac98（M1 计划定稿点，旧实施头 c156339 可经 `git reflog` 找回），本会话按计划 `docs/superpowers/plans/2026-08-04-m1-engine-core.md` 重新逐任务 TDD 执行 Task 1-10，每任务 commit + 阶段性更新本文件。
 
 ## 全景任务清单
 - ✅ ① 调研 Palantir Ontology（139 论断 → 25 条对抗验证 75 票 0 反对 → 9 组 high 置信发现；骨架页亲验；报告 `docs/ontology-research.md`）
 - ✅ ② 题材拍板：A股投研运营台 + 迷你 Foundry 全栈（引擎+Web UI+MCP AI 层）——用户 2026-08-04 选定
 - ✅ ③ 实战方案设计：brainstorming 逐节确认 → spec 落盘 → 用户审阅并反馈三点（数据域改科创板50 / 引擎详解学习笔记 / 验收方案细化）→ 已全部修订入库（4e5d643）
-- 🔄 ④ writing-plans 制定实现计划（进行中）
-- ⬜ ⑤ M1 引擎核心（OMS + store + funnel + oss + CLI 冒烟）
+- ✅ ④ writing-plans 制定 M1 实现计划（068ac98，10 任务 TDD 全代码）
+- 🔄 ⑤ M1 引擎核心（OMS + store + funnel + oss + CLI 冒烟）——回滚后重做中，游标：Task 1
 - ⬜ ⑥ M2 动能层（actions + edits 分离/合并 + 审计 + functions）
 - ⬜ ⑦ M3 Toolchain（codegen + HTTP API）
 - ⬜ ⑧ M4 Web UI（对象浏览器/Action 面板/审计流）
@@ -28,6 +28,8 @@
 - deep-research journal 可复用：resumeFromRunId=wf_16751943-8db。
 
 ## 未决 / 坑
+- 【回滚记录】2026-08-04 用户指令：reset --hard 068ac98 + git clean（丢弃 545c57b..c156339 共 11 个实施 commit，reflog 可恢复）；CLAUDE.md 按原内容重建并补问财备用数据源条款。
+- 问财 OpenAPI 备用数据源：key 在 `claude-config/secrets/investment-research.env`（IWENCAI_BASE_URL/IWENCAI_API_KEY），经环境变量用、永不入库。
 - 【环境坑】macOS TCC：Claude.app（com.anthropic.claudefordesktop）对"文稿文件夹"的授权在应用重启后曾丢失（整个 ~/Documents EPERM）→ 修复：系统设置开完全磁盘访问 / `tccutil reset SystemPolicyDocumentsFolder com.anthropic.claudefordesktop` 后重授权。再遇 EPERM 先查这里。
 - 数据拉取依赖会话内金融技能（hithink/mx 系列）：仅 Claude 会话可调，产出落 `datasets/*.csv`；引擎侧不做任何网络拉数。
 
