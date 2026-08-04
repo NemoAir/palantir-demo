@@ -1,0 +1,6 @@
+tag,name,weightKg,keeperId
+A1,大象,3000,K1
+A2,企鹅,30,K1
+A3,树懒,,K2
+,幽灵,10,K2
+A5,鲸鱼,abc,K2
