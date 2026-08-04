@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "cli": "tsx cli.ts"
+    "cli": "tsx cli.ts",
+    "serve": "tsx serve.ts",
+    "gen-osdk": "tsx generate-osdk.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

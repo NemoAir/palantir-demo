@@ -1,5 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "outDir": "dist" },
-  "include": ["src/**/*", "test/**/*", "cli.ts", "generate-osdk.ts", "../../ontology/**/*", "../../osdk/**/*"]
+  "compilerOptions": {
+    "outDir": "dist"
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "cli.ts",
+    "generate-osdk.ts",
+    "serve.ts",
+    "../../ontology/**/*",
+    "../../osdk/**/*"
+  ]
 }
