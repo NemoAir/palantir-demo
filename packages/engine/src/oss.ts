@@ -1,18 +1,11 @@
 import type { ObjectRow, ObjectStore } from './store.js';
+import type { Filter, QueryOptions } from './types.js';
 
-export type Filter =
-  | { property: string; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
-  | { property: string; op: 'isNull' | 'notNull' };
+export type { Filter, QueryOptions } from './types.js';
 
 const OP_SQL: Record<string, string> = {
   eq: '=', neq: '!=', lt: '<', lte: '<=', gt: '>', gte: '>=',
 };
-
-export interface QueryOptions {
-  orderBy?: string;
-  desc?: boolean;
-  limit?: number;
-}
 
 export class ObjectSetService {
   constructor(private readonly store: ObjectStore) {}

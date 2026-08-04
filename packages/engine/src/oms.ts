@@ -1,4 +1,4 @@
-import type { LinkTypeDef, ObjectTypeDef, OntologySchema } from './types.js';
+import type { ActionTypeDef, FunctionDef, LinkTypeDef, ObjectTypeDef, OntologySchema } from './types.js';
 
 const API_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
 
@@ -12,10 +12,34 @@ export class OntologyValidationError extends Error {
 export class OntologyRegistry {
   private objTypes = new Map<string, ObjectTypeDef>();
   private links: LinkTypeDef[] = [];
+  private actions = new Map<string, ActionTypeDef>();
+  private fns = new Map<string, FunctionDef>();
 
   constructor(public readonly schema: OntologySchema) {
     for (const ot of schema.objectTypes) this.objTypes.set(ot.apiName, ot);
     this.links = [...schema.linkTypes];
+    for (const a of schema.actionTypes ?? []) this.actions.set(a.apiName, a);
+    for (const f of schema.functions ?? []) this.fns.set(f.apiName, f);
+  }
+
+  actionType(apiName: string): ActionTypeDef {
+    const a = this.actions.get(apiName);
+    if (!a) throw new Error(`unknown action type: ${apiName}`);
+    return a;
+  }
+
+  actionTypes(): ActionTypeDef[] {
+    return [...this.actions.values()];
+  }
+
+  functionDef(apiName: string): FunctionDef {
+    const f = this.fns.get(apiName);
+    if (!f) throw new Error(`unknown function: ${apiName}`);
+    return f;
+  }
+
+  functions(): FunctionDef[] {
+    return [...this.fns.values()];
   }
 
   objectType(apiName: string): ObjectTypeDef {
@@ -103,6 +127,41 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
         `${base}.mapping.property`,
         `foreign key type '${fk.type}' does not match target primary key type '${targetPk.type}'`,
       );
+  }
+
+  // 动能层校验：action / function 的 apiName 合法且去重；action 参数与 criteria 各自去重
+  const seenActions = new Set<string>();
+  for (const a of schema.actionTypes ?? []) {
+    const base = `actionTypes.${a.apiName}`;
+    assertApiName(base, a.apiName);
+    if (seenActions.has(a.apiName))
+      throw new OntologyValidationError(base, `duplicate action type '${a.apiName}'`);
+    seenActions.add(a.apiName);
+
+    const seenParams = new Set<string>();
+    for (const p of a.parameters) {
+      assertApiName(`${base}.parameters.${p.apiName}`, p.apiName);
+      if (seenParams.has(p.apiName))
+        throw new OntologyValidationError(`${base}.parameters.${p.apiName}`, `duplicate parameter '${p.apiName}'`);
+      seenParams.add(p.apiName);
+    }
+
+    const seenCriteria = new Set<string>();
+    for (const c of a.criteria) {
+      assertApiName(`${base}.criteria.${c.apiName}`, c.apiName);
+      if (seenCriteria.has(c.apiName))
+        throw new OntologyValidationError(`${base}.criteria.${c.apiName}`, `duplicate criterion '${c.apiName}'`);
+      seenCriteria.add(c.apiName);
+    }
+  }
+
+  const seenFns = new Set<string>();
+  for (const f of schema.functions ?? []) {
+    const base = `functions.${f.apiName}`;
+    assertApiName(base, f.apiName);
+    if (seenFns.has(f.apiName))
+      throw new OntologyValidationError(base, `duplicate function '${f.apiName}'`);
+    seenFns.add(f.apiName);
   }
 
   // 同一对象类型上的遍历名必须唯一（一个类型挂多条链接时，出/入遍历名不得撞名）

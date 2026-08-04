@@ -1,4 +1,5 @@
 import { defineOntology } from '../../src/types.js';
+import type { Edit } from '../../src/types.js';
 
 /** 题材无关测试本体：动物园。引擎测试禁用金融词汇（题材无关约束的自我验证）。 */
 export const zoo = defineOntology({
@@ -48,6 +49,46 @@ export const zoo = defineOntology({
       targetToSourceName: 'animals',
       cardinality: 'MANY_TO_ONE',
       mapping: { kind: 'foreignKey', property: 'keeperId' },
+    },
+  ],
+  actionTypes: [
+    {
+      apiName: 'feedAnimal',
+      displayName: '投喂',
+      parameters: [
+        { apiName: 'tag', displayName: '动物编号', type: 'string' },
+        { apiName: 'foodKg', displayName: '投喂量(kg)', type: 'number' },
+      ],
+      criteria: [
+        {
+          apiName: 'animalExists',
+          displayName: '动物存在',
+          message: '找不到该编号的动物',
+          check: (ctx, p) => ctx.get('Animal', p.tag as string) !== undefined,
+        },
+        {
+          apiName: 'foodAmountPositive',
+          displayName: '投喂量为正',
+          message: '投喂量必须大于 0',
+          check: (_ctx, p) => (p.foodKg as number) > 0,
+        },
+      ],
+      apply: (ctx, p): Edit[] => {
+        const animal = ctx.get('Animal', p.tag as string)!;
+        const current = (animal.weightKg as number | null) ?? 0;
+        return [{
+          kind: 'set', objectType: 'Animal', pk: p.tag as string,
+          property: 'weightKg', value: current + (p.foodKg as number),
+        }];
+      },
+      sideEffects: (_ctx, p) => [{ kind: 'notification', message: `已投喂 ${p.tag} ${p.foodKg}kg` }],
+    },
+  ],
+  functions: [
+    {
+      apiName: 'heaviestAnimal',
+      displayName: '最重动物',
+      logic: (ctx) => ctx.query('Animal', [], { orderBy: 'weightKg', desc: true, limit: 1 })[0] ?? null,
     },
   ],
 });
