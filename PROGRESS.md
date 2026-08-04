@@ -1,7 +1,7 @@
 # PROGRESS — palantir-demo（Palantir 本体论学习与实战）
 
 ## 当前焦点
-【用户 2026-08-04 晚指令】M1 放行（用户未逐项抽查、直接指令继续=隐式放行，偏离 spec §9.1 系用户主动改流程）；额度重置（约 23:10）后**连续一次性执行 M2→M3→M4→M5 全部剩余里程碑**：每个里程碑"写实现计划→TDD 实现→自验收→commit+更新本文件"，全程不停等用户确认，完成后一并总验收。若再撞限额：停在干净 commit 状态、本文件记游标。
+连续执行模式（用户授权）：M2 ✅ 完成（验收 5/5）→ 当前进入 M3 Toolchain（codegen + HTTP API）。M4 Web UI、M5 MCP 排队。若撞限额：停在干净 commit、本文件记游标。
 
 ## 全景任务清单
 - ✅ ① 调研 Palantir Ontology（139 论断 → 25 条对抗验证 75 票 0 反对 → 9 组 high 置信发现；骨架页亲验；报告 `docs/ontology-research.md`）
@@ -9,7 +9,7 @@
 - ✅ ③ 实战方案设计：brainstorming 逐节确认 → spec 落盘 → 用户审阅并反馈三点（数据域改科创板50 / 引擎详解学习笔记 / 验收方案细化）→ 已全部修订入库（4e5d643）
 - ✅ ④ writing-plans 制定 M1 实现计划（068ac98，10 任务 TDD 全代码）
 - ✅ ⑤ M1 引擎核心（Task1-10 全部完成：脚手架/类型/OMS/schema/store/Funnel/OSS/真实数据/CLI/验收 7/7；26 测试全绿 + tsc 全量通过；待用户抽查）
-- ⬜ ⑥ M2 动能层（actions + edits 分离/合并 + 审计 + functions）
+- ✅ ⑥ M2 动能层：Action 管线/写时合并账本/重放/Function 运行时/6 Action+3 Function/CLI 扩展——56 测试全绿，验收 5/5（`docs/acceptance/m2-evidence.md`）
 - ⬜ ⑦ M3 Toolchain（codegen + HTTP API）
 - ⬜ ⑧ M4 Web UI（对象浏览器/Action 面板/审计流）
 - ⬜ ⑨ M5 MCP server（Claude Code 直连，OAG 演示）

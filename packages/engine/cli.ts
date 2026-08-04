@@ -6,7 +6,10 @@ import { loadOntology } from './src/oms.js';
 import { ObjectStore } from './src/store.js';
 import { materializeAll } from './src/funnel.js';
 import { ObjectSetService } from './src/oss.js';
+import { ActionService } from './src/actions.js';
+import { FunctionService } from './src/functions.js';
 import { parseFilterExpr } from './src/filter-parse.js';
+import type { Value } from './src/types.js';
 import { astock } from '../../ontology/astock.ontology.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -76,12 +79,76 @@ switch (cmd) {
     else console.log(store.count(positionals[0]));
     break;
   }
+  case 'action': {
+    const { values, positionals } = parseArgs({
+      args: rest, allowPositionals: true,
+      options: { param: { type: 'string', multiple: true } },
+    });
+    const { store } = open();
+    const actionDef = store.registry.actionType(positionals[0]);
+    // --param k=v：按 Action 参数声明的类型转换（number/boolean）
+    const params: Record<string, Value> = {};
+    for (const kv of values.param ?? []) {
+      const eq = kv.indexOf('=');
+      if (eq < 0) throw new Error(`bad --param（应为 k=v）: ${kv}`);
+      const key = kv.slice(0, eq);
+      const raw = kv.slice(eq + 1);
+      const def = actionDef.parameters.find(p => p.apiName === key);
+      params[key] = def?.type === 'number' ? Number(raw) : def?.type === 'boolean' ? raw === 'true' : raw;
+    }
+    const result = new ActionService(store).execute(positionals[0], params);
+    if (result.ok) {
+      console.log(`✅ ${actionDef.displayName} 提交成功（${result.edits.length} 项编辑）`);
+      for (const e of result.edits)
+        console.log(e.kind === 'set' ? `  [set] ${e.objectType}/${e.pk}.${e.property} = ${JSON.stringify(e.value)}` : `  [create] ${e.objectType}/${e.pk}`);
+      for (const s of result.sideEffects) console.log(`  [通知] ${s.message}`);
+    } else if (result.stage === 'criteria') {
+      console.log(`❌ 提交被拒（criteria: ${result.failedCriterion}）：${result.message}`);
+      process.exitCode = 1;
+    } else {
+      console.log(`❌ 参数错误：${result.message}`);
+      process.exitCode = 1;
+    }
+    break;
+  }
+  case 'fn': {
+    const { values, positionals } = parseArgs({
+      args: rest, allowPositionals: true,
+      options: { param: { type: 'string', multiple: true } },
+    });
+    const { store } = open();
+    const params: Record<string, Value> = {};
+    for (const kv of values.param ?? []) {
+      const eq = kv.indexOf('=');
+      if (eq < 0) throw new Error(`bad --param（应为 k=v）: ${kv}`);
+      params[kv.slice(0, eq)] = kv.slice(eq + 1);
+    }
+    const out = new FunctionService(store).call(positionals[0], params);
+    console.log(JSON.stringify(out, null, 2));
+    break;
+  }
+  case 'audit': {
+    const { values } = parseArgs({ args: rest, options: { limit: { type: 'string' } } });
+    const { store } = open();
+    for (const a of store.listAudit(values.limit ? Number(values.limit) : 20))
+      console.log(`#${a.id} [${a.at}] ${a.action} params=${JSON.stringify(a.params)} edits=${a.edits.length}`);
+    break;
+  }
+  case 'notifications': {
+    const { store } = open();
+    for (const n of store.listNotifications(20)) console.log(`#${n.id} [${n.at}] ${n.message}`);
+    break;
+  }
   default:
-    console.log(`用法: pnpm cli <load|materialize|query|get|traverse|count>
+    console.log(`用法: pnpm cli <load|materialize|query|get|traverse|count|action|fn|audit|notifications>
   load                                    查看本体注册摘要
   materialize                             物化 datasets/ 全部数据集（含报告）
   query <Type> [--where "pe<50"]... [--order-by pe] [--desc] [--limit 10]
   get <Type> <主键>
   traverse <Type> <主键> <遍历名>          如 traverse Stock 688981 industry
-  count <Type> [--by <属性>]`);
+  count <Type> [--by <属性>]
+  action <名称> [--param k=v]...           如 action tradeStock --param portfolioId=P1 ...
+  fn <名称> [--param k=v]...               如 fn portfolioValuation --param portfolioId=P1
+  audit [--limit 20]                       审计流（最近在前）
+  notifications                            通知记录`);
 }
