@@ -14,7 +14,7 @@ describe('ObjectStore', () => {
 
   it('init 为每个对象类型建表（含纯编辑型），布尔/数字列类型正确', () => {
     const tables = store.db
-      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'obj_%' ORDER BY name`)
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'obj\\_%' ESCAPE '\\' ORDER BY name`)
       .all() as { name: string }[];
     expect(tables.map(t => t.name)).toEqual(['obj_Animal', 'obj_Keeper', 'obj_Note']);
   });
