@@ -26,11 +26,17 @@
 ## 常用命令
 
 ```bash
-pnpm --filter engine test      # 引擎全部测试
+pnpm --filter engine test      # 引擎全部测试（66）
 pnpm cli load                  # 本体注册摘要
-pnpm cli materialize           # 物化 datasets/（含脏行报告）
+pnpm cli materialize           # 物化 datasets/（含脏行报告，重放编辑）
 pnpm cli query Stock --where "pe<50" --order-by pe
-pnpm cli traverse Stock 688981 industry
+pnpm cli action tradeStock --param portfolioId=P1 --param stockCode=688981 --param side=buy --param quantity=100 --param price=120
+pnpm cli fn portfolioValuation --param portfolioId=P1
+pnpm cli audit                 # 审计流
+pnpm --filter engine serve     # HTTP API :4177
+pnpm --filter web dev          # Web UI :5177（需 API 先起）
+pnpm --filter engine gen-osdk  # 重新生成 osdk/astock-client.ts
+pnpm --filter mcp smoke        # MCP stdio 冒烟
 ```
 
 ## git 规范
