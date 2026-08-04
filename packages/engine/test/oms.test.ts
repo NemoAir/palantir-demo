@@ -59,6 +59,20 @@ describe('loadOntology', () => {
     expect(() => loadOntology(s)).toThrowError(/type/i);
   });
 
+  it('拒绝同一对象类型上的重复遍历名', () => {
+    const s = clone();
+    s.objectTypes[0].properties.push({ apiName: 'keeper2Id', displayName: '副饲养员', type: 'string', nullable: true });
+    s.linkTypes.push({
+      apiName: 'caredBy2', displayName: '由…副照料',
+      source: 'Animal', target: 'Keeper',
+      sourceToTargetName: 'keeper',  // 与 caredBy 撞名
+      targetToSourceName: 'animals2',
+      cardinality: 'MANY_TO_ONE',
+      mapping: { kind: 'foreignKey', property: 'keeper2Id' },
+    });
+    expect(() => loadOntology(s)).toThrowError(/duplicate traversal/);
+  });
+
   it('linkByTraverseName 双向解析', () => {
     const reg = loadOntology(zoo);
     const a = reg.linkByTraverseName('Animal', 'keeper');

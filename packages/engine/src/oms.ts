@@ -105,5 +105,19 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
       );
   }
 
+  // 同一对象类型上的遍历名必须唯一（如 Stock 的 positions/researchNotes/alerts 不得撞名）
+  const traverseNames = new Map<string, Set<string>>();
+  const addTraverse = (typeName: string, name: string, path: string) => {
+    let set = traverseNames.get(typeName);
+    if (!set) { set = new Set(); traverseNames.set(typeName, set); }
+    if (set.has(name))
+      throw new OntologyValidationError(path, `duplicate traversal name '${name}' on object type '${typeName}'`);
+    set.add(name);
+  };
+  for (const link of schema.linkTypes) {
+    addTraverse(link.source, link.sourceToTargetName, `linkTypes.${link.apiName}.sourceToTargetName`);
+    addTraverse(link.target, link.targetToSourceName, `linkTypes.${link.apiName}.targetToSourceName`);
+  }
+
   return new OntologyRegistry(schema);
 }
