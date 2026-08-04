@@ -1,7 +1,7 @@
 # PROGRESS — palantir-demo（Palantir 本体论学习与实战）
 
 ## 当前焦点
-连续执行模式（用户授权）：M2 ✅ M3 ✅ → 当前进入 M4 Web UI（对象浏览器/Action 面板/审计流，后端=M3 API）。M5 MCP 排队。若撞限额：停在干净 commit、本文件记游标。
+连续执行模式（用户授权）：M2 ✅ M3 ✅ M4 ✅ → 当前进入 M5 MCP server（最后一个里程碑），完成后出总验收报告。
 
 ## 全景任务清单
 - ✅ ① 调研 Palantir Ontology（139 论断 → 25 条对抗验证 75 票 0 反对 → 9 组 high 置信发现；骨架页亲验；报告 `docs/ontology-research.md`）
@@ -11,7 +11,7 @@
 - ✅ ⑤ M1 引擎核心（Task1-10 全部完成：脚手架/类型/OMS/schema/store/Funnel/OSS/真实数据/CLI/验收 7/7；26 测试全绿 + tsc 全量通过；待用户抽查）
 - ✅ ⑥ M2 动能层：Action 管线/写时合并账本/重放/Function 运行时/6 Action+3 Function/CLI 扩展——56 测试全绿，验收 5/5（`docs/acceptance/m2-evidence.md`）
 - ✅ ⑦ M3 Toolchain：codegen（类型化 OSDK+编译期三防线）+ HTTP API（题材无关 REST）——63 测试全绿（`docs/acceptance/m3-evidence.md`）
-- ⬜ ⑧ M4 Web UI（对象浏览器/Action 面板/审计流）
+- ✅ ⑧ M4 Web UI：三栏运营台（对象浏览器/详情链接遍历/Action 动态表单/审计流/闭环血缘条）——浏览器实操验收 4/4（`docs/acceptance/m4-evidence.md`，观感待用户终审）
 - ⬜ ⑨ M5 MCP server（Claude Code 直连，OAG 演示）
 
 ## 关键决策与依据（全记录见 spec §2）
