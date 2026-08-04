@@ -2,13 +2,13 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
-import { loadOntology } from './oms.js';
-import { ObjectStore } from './store.js';
-import { materializeAll } from './funnel.js';
-import { ObjectSetService, type Filter } from './oss.js';
-import { astock } from '../../../ontology/astock.ontology.js';
+import { loadOntology } from './src/oms.js';
+import { ObjectStore } from './src/store.js';
+import { materializeAll } from './src/funnel.js';
+import { ObjectSetService, type Filter } from './src/oss.js';
+import { astock } from '../../ontology/astock.ontology.js';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DB_PATH = join(root, 'ontology.db');
 const DATASETS = join(root, 'datasets');
 

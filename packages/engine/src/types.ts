@@ -11,7 +11,7 @@ export interface PropertyDef {
 
 export interface CsvDatasource {
   kind: 'csv';
-  /** 相对 datasets 目录的文件名，如 'stocks.csv' */
+  /** 相对 datasets 目录的文件名，如 'animals.csv' */
   path: string;
 }
 
@@ -32,9 +32,9 @@ export interface LinkTypeDef {
   source: string;
   /** 被指向侧（一方） */
   target: string;
-  /** 从 source 对象遍历到 target 的名字，如 'industry' */
+  /** 从 source 对象遍历到 target 的名字，如 'keeper' */
   sourceToTargetName: string;
-  /** 从 target 对象反向遍历到 source 集合的名字，如 'stocks' */
+  /** 从 target 对象反向遍历到 source 集合的名字，如 'animals' */
   targetToSourceName: string;
   /** v1 仅外键型多对一；多对多（dataset 支撑）超出 M1 范围 */
   cardinality: 'MANY_TO_ONE';

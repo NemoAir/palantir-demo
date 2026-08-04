@@ -105,7 +105,7 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
       );
   }
 
-  // 同一对象类型上的遍历名必须唯一（如 Stock 的 positions/researchNotes/alerts 不得撞名）
+  // 同一对象类型上的遍历名必须唯一（一个类型挂多条链接时，出/入遍历名不得撞名）
   const traverseNames = new Map<string, Set<string>>();
   const addTraverse = (typeName: string, name: string, path: string) => {
     let set = traverseNames.get(typeName);

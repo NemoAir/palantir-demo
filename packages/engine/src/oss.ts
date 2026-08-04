@@ -30,9 +30,9 @@ export class ObjectSetService {
 
     for (const f of filters) {
       this.assertProperty(ot.apiName, f.property);
-      if (f.op === 'isNull') where.push(`${f.property} IS NULL`);
-      else if (f.op === 'notNull') where.push(`${f.property} IS NOT NULL`);
-      else if (f.op === 'contains') {
+      if (!('value' in f)) {
+        where.push(`${f.property} IS ${f.op === 'isNull' ? '' : 'NOT '}NULL`);
+      } else if (f.op === 'contains') {
         where.push(`${f.property} LIKE ?`);
         params.push(`%${String(f.value)}%`);
       } else {

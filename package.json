@@ -1,6 +1,7 @@
 {
   "name": "palantir-demo",
   "private": true,
+  "type": "module",
   "scripts": {
     "test": "pnpm --filter engine test",
     "cli": "pnpm --filter engine cli"
