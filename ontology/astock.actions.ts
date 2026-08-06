@@ -21,6 +21,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'createPortfolio',
     displayName: '新建组合',
+    docs: '开一个新的模拟组合（虚拟资金账户）。后续的调仓、估值、盈亏都以组合为单位进行。',
     parameters: [
       { apiName: 'name', displayName: '组合名称', type: 'string' },
       { apiName: 'initialCash', displayName: '初始资金', type: 'number' },
@@ -51,6 +52,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'updateResearchNote',
     displayName: '改研判',
+    docs: '修改已有研判笔记。研判是活文档——观点变了就更新，改动同样过治理管线、留审计。',
     parameters: [
       { apiName: 'noteId', displayName: '研判笔记', type: 'string', editor: { kind: 'objectRef', objectType: 'ResearchNote' } },
       { apiName: 'stance', displayName: '结论', type: 'string', editor: { kind: 'enum', options: [{ value: '看多', label: '看多' }, { value: '看空', label: '看空' }, { value: '中性', label: '中性' }] } },
@@ -74,6 +76,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'addToWatchlist',
     displayName: '加自选',
+    docs: '把某只股票标记为自选（isWatched=true）——最小的一次"编辑属性"写入示例。',
     parameters: [{ apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } }],
     criteria: [
       {
@@ -102,6 +105,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'tradeStock',
     displayName: '模拟调仓',
+    docs: '在模拟组合内买入/卖出一只股票：先校验现金或持仓是否足够，再原子更新持仓与现金余额。',
     parameters: [
       { apiName: 'portfolioId', displayName: '组合', type: 'string', editor: { kind: 'objectRef', objectType: 'Portfolio' } },
       { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
@@ -191,6 +195,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'writeResearchNote',
     displayName: '写研判',
+    docs: '对某只股票记录你的投资观点（看多/看空/中性 + 理由），沉淀为可追溯的决策依据。',
     parameters: [
       { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
       { apiName: 'stance', displayName: '结论', type: 'string', editor: { kind: 'enum', options: [{ value: '看多', label: '看多' }, { value: '看空', label: '看空' }, { value: '中性', label: '中性' }] } },
@@ -220,6 +225,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'setAlert',
     displayName: '设预警',
+    docs: '给股票挂一个盯盘条件（如 latestPrice<150）。挂上后处于待命(armed)，由"预警扫描"巡逻发现是否满足。',
     parameters: [
       { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
       { apiName: 'condition', displayName: '触发条件', type: 'string', editor: { kind: 'filterExpr', objectType: 'Stock' } },
@@ -255,6 +261,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'resolveAlert',
     displayName: '处理预警',
+    docs: '把已触发(triggered)的预警标记为已处理(resolved)——人工认领并关闭这单提醒。',
     parameters: [{ apiName: 'alertId', displayName: '预警', type: 'string', editor: { kind: 'objectRef', objectType: 'Alert' } }],
     criteria: [
       {
@@ -276,6 +283,7 @@ export const astockActions: ActionTypeDef[] = [
     // 走完整管线（criteria/审计/副作用）——Foundry 自动化同样经 Action 写回。
     apiName: 'markAlertTriggered',
     displayName: '标记预警触发',
+    docs: '【系统动词】"预警扫描"发现条件满足后，由自动化调用本动词把状态落账为 triggered——发现与落账分离，落账才进审计。',
     system: true,
     parameters: [{ apiName: 'alertId', displayName: '预警', type: 'string', editor: { kind: 'objectRef', objectType: 'Alert' } }],
     criteria: [

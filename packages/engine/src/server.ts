@@ -27,11 +27,12 @@ export function createApiServer(store: ObjectStore, opts: { datasetsDir?: string
     actionTypes: registry.actionTypes().map(a => ({
       apiName: a.apiName,
       displayName: a.displayName,
+      docs: a.docs,
       system: a.system ?? false,
       parameters: a.parameters,
       criteria: a.criteria.map(c => ({ apiName: c.apiName, displayName: c.displayName, message: c.message })),
     })),
-    functions: registry.functions().map(f => ({ apiName: f.apiName, displayName: f.displayName, parameters: f.parameters ?? [] })),
+    functions: registry.functions().map(f => ({ apiName: f.apiName, displayName: f.displayName, docs: f.docs, parameters: f.parameters ?? [] })),
   });
 
   const json = (res: http.ServerResponse, status: number, body: unknown): void => {

@@ -242,6 +242,49 @@ input, select { font: inherit; }
   padding: 12px; font-family: var(--mono); font-size: 12px; overflow-x: auto; white-space: pre-wrap;
 }
 
+/* 批F：导航分组抽屉 + 概念地图 + docs 说明 + 通知可点击强化 */
+.nav-group { margin-bottom: 6px; }
+.nav-group > summary.group-title {
+  padding: 6px 16px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-weight: 700; cursor: pointer; user-select: none; list-style-position: inside;
+}
+.nav-group > summary.group-title.semantic { color: var(--semantic); }
+.nav-group > summary.group-title.kinetic { color: var(--kinetic); }
+.nav-group > summary.group-title:hover { filter: brightness(1.2); }
+.concept-btn {
+  border: 1px solid var(--line); color: var(--semantic); font-size: 12px;
+  padding: 4px 10px; border-radius: 4px;
+}
+.concept-btn:hover { border-color: var(--semantic); background: rgba(91, 141, 239, 0.08); }
+.concept-overlay {
+  position: fixed; inset: 0; z-index: 50; background: rgba(8, 12, 20, 0.6);
+  display: flex; justify-content: flex-end;
+}
+.concept-drawer {
+  width: min(480px, 92vw); height: 100%; overflow-y: auto;
+  background: var(--panel); border-left: 1px solid var(--line);
+  padding: 18px 20px 30px; box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
+}
+.concept-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.concept-head h2 { font-size: 15px; }
+.concept-close { margin-left: auto; color: var(--muted); font-size: 12px; }
+.concept-close:hover { color: var(--text); }
+.concept-card {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.concept-card.semantic { border-left: 2px solid var(--semantic); }
+.concept-card.kinetic { border-left: 2px solid var(--kinetic); }
+.concept-card.flow { border-left: 2px solid var(--muted); }
+.concept-term { font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.concept-en { color: var(--muted); font-family: var(--mono); font-size: 11px; font-weight: 400; margin-left: 6px; }
+.concept-body { color: var(--text); opacity: 0.88; font-size: 12.5px; margin-top: 4px; line-height: 1.6; }
+.docs-note {
+  background: rgba(91, 141, 239, 0.07); border: 1px solid rgba(91, 141, 239, 0.25);
+  border-radius: 5px; padding: 8px 11px; font-size: 12.5px; line-height: 1.6;
+  color: var(--text); margin-bottom: 14px;
+}
+
 /* 批D */
 .remat { display: flex; align-items: center; gap: 8px; }
 .remat-btn {
@@ -251,8 +294,13 @@ input, select { font: inherit; }
 .remat-btn:hover { color: var(--semantic); border-color: var(--semantic); }
 .remat-btn:disabled { opacity: 0.5; }
 .remat-msg { color: var(--down); font-size: 11px; }
-.notif-item.linked { cursor: pointer; }
-.notif-item.linked:hover { color: var(--kinetic); }
+.notif-item.linked {
+  cursor: pointer; color: var(--text);
+  border-left: 2px solid var(--kinetic-dim); padding-left: 8px;
+  border-bottom: 1px dashed rgba(38, 51, 73, 0.6);
+}
+.notif-item.linked:hover { color: var(--kinetic); border-left-color: var(--kinetic); background: rgba(232, 179, 60, 0.06); }
+.notif-item.linked:hover .notif-text { text-decoration: underline; text-underline-offset: 2px; }
 .notif-arrow { color: var(--kinetic); }
 
 /* 空态 */

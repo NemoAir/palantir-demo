@@ -7,6 +7,7 @@ export const astockFunctions: FunctionDef[] = [
   {
     apiName: 'portfolioValuation',
     displayName: '组合估值',
+    docs: '把组合的现金、每笔持仓的市值与盈亏，按最新行情算成一张估值快照——调仓前看它、复盘看它。做成 Function 的意义：UI/CLI/AI 谁来问都是同一套口径。',
     parameters: [{ apiName: 'portfolioId', displayName: '组合', type: 'string', editor: { kind: 'objectRef', objectType: 'Portfolio' } }],
     logic: (ctx, params) => {
       const pid = params.portfolioId as string;
@@ -45,6 +46,7 @@ export const astockFunctions: FunctionDef[] = [
   {
     apiName: 'screenStocks',
     displayName: '条件选股',
+    docs: '按条件筛出股票清单。保存的是"条件"而非"名单"（动态对象集）——每次运行都在最新数据上重算。',
     parameters: [{ apiName: 'where', displayName: '筛选条件', type: 'string', editor: { kind: 'filterExpr', objectType: 'Stock' } }],
     logic: (ctx, params) => {
       // 动态对象集：保存的是条件而非名单——每次求值都在最新数据上重算
@@ -56,6 +58,7 @@ export const astockFunctions: FunctionDef[] = [
   {
     apiName: 'checkAlerts',
     displayName: '预警扫描',
+    docs: '巡逻员：逐个核对待命(armed)预警的条件是否已被最新行情满足，返回命中清单。只有眼睛没有手——发现不等于落账，落账走系统动词"标记预警触发"。',
     parameters: [],
     logic: (ctx) => {
       // 只读扫描：返回条件命中的待命预警；状态写入由调用方经 markAlertTriggered（Action）完成

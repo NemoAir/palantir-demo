@@ -122,7 +122,7 @@ export function buildTools(store: ObjectStore): {
     const criteriaDesc = a.criteria.map(c => c.displayName).join('、');
     tools.push({
       name: `action_${a.apiName}`,
-      description: `执行 Action「${a.displayName}」（受治理写操作，提交前提：${criteriaDesc || '无'}；不满足会结构化拒绝且不落库）。`,
+      description: `执行 Action「${a.displayName}」${a.docs ? `——${a.docs}` : ''}（受治理写操作，提交前提：${criteriaDesc || '无'}；不满足会结构化拒绝且不落库）。`,
       inputSchema: { type: 'object', properties, required },
     });
   }
@@ -132,7 +132,7 @@ export function buildTools(store: ObjectStore): {
     const { properties, required } = paramsToSchema(f.parameters ?? []);
     tools.push({
       name: `fn_${f.apiName}`,
-      description: `调用本体函数「${f.displayName}」（只读计算）。`,
+      description: `调用本体函数「${f.displayName}」（只读计算）${f.docs ? `——${f.docs}` : ''}。`,
       inputSchema: { type: 'object', properties, required },
     });
   }

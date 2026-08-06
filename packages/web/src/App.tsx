@@ -43,6 +43,7 @@ export function App() {
   const [lineagePlay, setLineagePlay] = useState(0);
   const [auditKey, setAuditKey] = useState(0);
   const [fatal, setFatal] = useState<string | null>(null);
+  const [showConcepts, setShowConcepts] = useState(false);
 
   /** 导航 = 压入浏览器历史（前进/后退键、返回按钮全部可用）。
    * pushState 必须在 updater 之外：StrictMode 会双调用 updater，副作用放里面会把历史压重。 */
@@ -95,52 +96,59 @@ export function App() {
           <span title="semantic elements：对象/属性/链接——世界里'有什么'（企业的名词）"><span className="dot dot-semantic" />语义（名词）对象 {schema.objectTypes.length} · 链接 {schema.linkTypes.length}</span>
           <span title="kinetic elements：Action/Function——对世界'能做什么'（企业的动词）"><span className="dot dot-kinetic" />动能（动词）Action {schema.actionTypes.length} · Function {schema.functions.length}</span>
         </span>
+        <button className="concept-btn" onClick={() => setShowConcepts(true)} title="这套系统的核心概念与闭环——一页讲清">◈ 概念地图</button>
       </header>
+      {showConcepts && <ConceptMap onClose={() => setShowConcepts(false)} />}
 
       <div className="main">
         <nav className="sidenav">
-          <div className="group-label">语义层 · 对象</div>
-          {schema.objectTypes.map(ot => (
-            <button
-              key={ot.apiName}
-              className={`nav-item ${(view.kind === 'list' || view.kind === 'detail') && view.type === ot.apiName ? 'active' : ''}`}
-              onClick={() => setView({ kind: 'list', type: ot.apiName })}
-            >
-              <span className="dot dot-semantic" />{ot.displayName}
-              <span className="count">{counts[ot.apiName] ?? ''}</span>
-            </button>
-          ))}
-          <div className="group-label" style={{ marginTop: 14 }} title="动能元素（kinetic elements）：Action 动词与 Function 函数——对世界'能做什么'">动能层 · Action</div>
-          {schema.actionTypes.filter(a => !a.system).map(a => (
-            <button
-              key={a.apiName}
-              className={`nav-item kinetic ${view.kind === 'action' && view.name === a.apiName ? 'active' : ''}`}
-              onClick={() => setView({ kind: 'action', name: a.apiName })}
-            >
-              <span className="dot dot-kinetic" />{a.displayName}
-            </button>
-          ))}
-          <div className="group-label" style={{ marginTop: 14 }} title="Function：本体原生只读逻辑（算不做，写入必须经 Action）——动能元素的另一半">动能层 · Function</div>
-          {schema.functions.map(f => (
-            <button
-              key={f.apiName}
-              className={`nav-item kinetic ${view.kind === 'fn' && view.name === f.apiName ? 'active' : ''}`}
-              onClick={() => setView({ kind: 'fn', name: f.apiName })}
-            >
-              <span className="dot dot-kinetic" style={{ borderRadius: 2 }} />{f.displayName}
-            </button>
-          ))}
-          <details className="system-group">
-            <summary title="系统 Action：由自动化/AI 流程调用（写入照走治理管线），人一般不手点">系统 Action</summary>
-            {schema.actionTypes.filter(a => a.system).map(a => (
+          <details open className="nav-group">
+            <summary className="group-title semantic" title="semantic elements（语义元素）：对象/属性/链接——世界里'有什么'，企业的名词">语义元素 · 名词</summary>
+            {schema.objectTypes.map(ot => (
+              <button
+                key={ot.apiName}
+                className={`nav-item ${(view.kind === 'list' || view.kind === 'detail') && view.type === ot.apiName ? 'active' : ''}`}
+                onClick={() => setView({ kind: 'list', type: ot.apiName })}
+              >
+                <span className="dot dot-semantic" />{ot.displayName}
+                <span className="count">{counts[ot.apiName] ?? ''}</span>
+              </button>
+            ))}
+          </details>
+          <details open className="nav-group">
+            <summary className="group-title kinetic" title="kinetic elements（动能元素）：Action 与 Function——对世界'能做什么'，企业的动词">动能元素 · 动词</summary>
+            <div className="group-label" title="Action：改变世界的动词——受治理的写操作（参数校验→提交前提→原子写入→审计）">Action · 写入</div>
+            {schema.actionTypes.filter(a => !a.system).map(a => (
               <button
                 key={a.apiName}
                 className={`nav-item kinetic ${view.kind === 'action' && view.name === a.apiName ? 'active' : ''}`}
                 onClick={() => setView({ kind: 'action', name: a.apiName })}
               >
-                <span className="dot dot-kinetic" style={{ opacity: 0.5 }} />{a.displayName}
+                <span className="dot dot-kinetic" />{a.displayName}
               </button>
             ))}
+            <div className="group-label" style={{ marginTop: 10 }} title="Function：只读的动词——托管计算（算不做，写入必须经 Action）">Function · 只读计算</div>
+            {schema.functions.map(f => (
+              <button
+                key={f.apiName}
+                className={`nav-item kinetic ${view.kind === 'fn' && view.name === f.apiName ? 'active' : ''}`}
+                onClick={() => setView({ kind: 'fn', name: f.apiName })}
+              >
+                <span className="dot dot-kinetic" style={{ borderRadius: 2 }} />{f.displayName}
+              </button>
+            ))}
+            <details className="system-group">
+              <summary title="系统 Action：由自动化/AI 流程调用（写入照走治理管线），人一般不手点">系统 Action</summary>
+              {schema.actionTypes.filter(a => a.system).map(a => (
+                <button
+                  key={a.apiName}
+                  className={`nav-item kinetic ${view.kind === 'action' && view.name === a.apiName ? 'active' : ''}`}
+                  onClick={() => setView({ kind: 'action', name: a.apiName })}
+                >
+                  <span className="dot dot-kinetic" style={{ opacity: 0.5 }} />{a.displayName}
+                </button>
+              ))}
+            </details>
           </details>
         </nav>
 
@@ -445,6 +453,7 @@ function ActionPanel({ schema, name, prefill, onDone }: {
         <span className="api-name">{action.apiName}</span>
       </div>
       <div className="subtitle">Action Type——受治理的写操作：参数校验 → 提交前提 → 原子提交 → 审计</div>
+      {action.docs && <div className="docs-note">{action.docs}</div>}
       {action.parameters.map(p => (
         <ParamField
           key={p.apiName}
@@ -657,6 +666,7 @@ function FunctionPanel({ schema, name, prefill }: {
         <span className="api-name">fn: {fn.apiName}</span>
       </div>
       <div className="subtitle">Function——本体原生只读逻辑（算不做；要落地写入需经 Action）</div>
+      {fn.docs && <div className="docs-note">{fn.docs}</div>}
       {fn.parameters.map(p => (
         <ParamField key={p.apiName} schema={schema} param={p} value={values[p.apiName]} onChange={v => setValues(s => ({ ...s, [p.apiName]: v }))} />
       ))}
@@ -783,11 +793,96 @@ function AuditRail({ refreshSignal, schema, onJump }: {
           onClick={n.link ? () => onJump(n.link!.objectType, n.link!.pk) : undefined}
           title={n.link ? `点击查看 ${n.link.objectType}/${n.link.pk}` : undefined}
         >
-          <div>{n.message}{n.link && <span className="notif-arrow"> →</span>}</div>
+          <div><span className="notif-text">{n.message}</span>{n.link && <span className="notif-arrow"> → 点击查看</span>}</div>
           <div className="time-full">{fmtTime(n.at)}</div>
         </div>
       ))}
     </aside>
+  );
+}
+
+/* ---------- 概念地图：核心术语与闭环的集中解释 ---------- */
+const CONCEPT_SECTIONS: { title: string; items: { term: string; en: string; cls: 'semantic' | 'kinetic' | 'flow'; body: string }[] }[] = [
+  {
+    title: '本体 = 名词 + 动词',
+    items: [
+      {
+        term: '本体', en: 'Ontology', cls: 'flow',
+        body: '把业务世界建模成「名词 + 动词」的一张活地图。数据不再是死表格，而是有身份、有关系、可操作的对象。左侧导航的两个分组就是它的全部：语义元素（名词）+ 动能元素（动词）。',
+      },
+      {
+        term: '语义元素', en: 'semantic elements', cls: 'semantic',
+        body: '世界里"有什么"：对象类型（股票/组合/持仓…）、属性（最新价/PE…）、链接（持仓↔股票）。官方就叫 semantic elements（语义元素），本站蓝色一律代表它。',
+      },
+      {
+        term: '动能元素', en: 'kinetic elements', cls: 'kinetic',
+        body: '对世界"能做什么"，分两种动词：Action（写入动词——受治理地改状态：调仓/设预警，走 参数校验→提交前提→原子写入→审计）；Function（只读动词——托管计算：估值/扫描，算不做）。注意：Action 和 Function 同属动能元素，没有第三层——区别只是一个"做"、一个"算"。金色一律代表动能。',
+      },
+    ],
+  },
+  {
+    title: '数据怎么进来（血缘条左半段）',
+    items: [
+      {
+        term: '数据接入', en: 'ingestion', cls: 'flow',
+        body: '真实行情（科创板50）由对话里的 Claude 从数据源拉取、整理落成 datasets/*.csv。本系统引擎自身不联网——所以"拉新行情"要走对话，页面按钮管不了这一步。',
+      },
+      {
+        term: 'Funnel 物化', en: 'materialization', cls: 'semantic',
+        body: 'Funnel 直译"漏斗"——Palantir 里把数据集灌成本体对象的管道服务，宽口进原始数据、窄口出规整对象。物化 = 把 CSV 按 schema 搬进对象库：类型校验、脏值报告（14 家未盈利公司的 PE 如实置空、不造数）、幂等可重跑。为什么要这一步：CSV 只是碰巧对齐的文本，物化后才有主键身份、类型契约、链接关系，才能被安全地查询与写回。',
+      },
+    ],
+  },
+  {
+    title: '决策怎么落地（血缘条右半段）',
+    items: [
+      {
+        term: '写时合并 + 编辑重放', en: 'Apply User Edits', cls: 'kinetic',
+        body: '你经 Action 做的每笔修改都记入编辑账本（底层 CSV 不动）。重新物化会重建底表、然后把账本一条条重放回来——所以行情换血后，你的组合/研判/预警一个不丢。',
+      },
+      {
+        term: '审计', en: 'audit trail', cls: 'kinetic',
+        body: '每次 Action 提交都留痕：谁、何时、什么参数、改了哪几条。右栏审计流就是它——决策可回放、可追责。',
+      },
+      {
+        term: '闭环', en: 'closing the loop', cls: 'flow',
+        body: '底部血缘条：数据集 → Funnel 物化 → 本体对象 → Action 决策 → 写回账本 → 审计。提交任何 Action 时它会流动点亮一次。"写回"这半环正是运营系统与纯分析系统（只读报表）的分界线。',
+      },
+    ],
+  },
+];
+
+function ConceptMap({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="concept-overlay" onClick={onClose}>
+      <div className="concept-drawer" onClick={e => e.stopPropagation()}>
+        <div className="concept-head">
+          <h2>◈ 概念地图</h2>
+          <span className="subtitle" style={{ margin: 0 }}>Palantir Ontology 的核心词汇，与本页面各区域的对应</span>
+          <button className="concept-close" onClick={onClose}>✕ 关闭</button>
+        </div>
+        {CONCEPT_SECTIONS.map(sec => (
+          <div key={sec.title}>
+            <div className="section-label">{sec.title}</div>
+            {sec.items.map(c => (
+              <div className={`concept-card ${c.cls}`} key={c.term}>
+                <div className="concept-term">
+                  <span className={`dot ${c.cls === 'kinetic' ? 'dot-kinetic' : 'dot-semantic'}`} style={c.cls === 'flow' ? { background: 'var(--muted)' } : undefined} />
+                  {c.term}<span className="concept-en">{c.en}</span>
+                </div>
+                <div className="concept-body">{c.body}</div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

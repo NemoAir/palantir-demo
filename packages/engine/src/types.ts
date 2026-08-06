@@ -111,6 +111,8 @@ export interface CriterionDef {
 export interface ActionTypeDef {
   apiName: string;
   displayName: string;
+  /** 一句话说明"这个动词是干嘛的、什么时候用"——各消费端（UI/AI 工具）展示。 */
+  docs?: string;
   /** 系统 Action：由自动化/AI 流程调用（如巡逻触发），UI 折叠展示、不进常用面板。 */
   system?: boolean;
   parameters: ParamDef[];
@@ -124,6 +126,8 @@ export interface ActionTypeDef {
 export interface FunctionDef {
   apiName: string;
   displayName: string;
+  /** 一句话说明"这个函数算什么、为什么要跑"——各消费端展示。 */
+  docs?: string;
   /** 参数声明（可选）：供 UI 表单与 AI 工具描述使用；运行时传参仍为宽松对象。 */
   parameters?: ParamDef[];
   logic(ctx: ReadonlyContext, params: Record<string, Value>): unknown;

@@ -43,6 +43,7 @@ export interface ParamDef {
 export interface ActionTypeView {
   apiName: string;
   displayName: string;
+  docs?: string;
   system?: boolean;
   parameters: ParamDef[];
   criteria: { apiName: string; displayName: string; message: string }[];
@@ -54,7 +55,7 @@ export interface SchemaView {
   objectTypes: ObjectTypeDef[];
   linkTypes: LinkTypeDef[];
   actionTypes: ActionTypeView[];
-  functions: { apiName: string; displayName: string; parameters: ParamDef[] }[];
+  functions: { apiName: string; displayName: string; docs?: string; parameters: ParamDef[] }[];
 }
 
 export type ActionResult =
