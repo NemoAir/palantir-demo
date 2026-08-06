@@ -36,8 +36,8 @@
 - 数据拉取依赖会话内金融技能（hithink/mx 系列）：仅 Claude 会话可调，产出落 `datasets/*.csv`；引擎侧不做任何网络拉数。
 
 ## 下一步 / 游标
-1. writing-plans 产出实现计划（含每任务验证步骤）→ 用户过目
-2. M1 动工（按计划逐任务 TDD）
+1. 用户体验迭代批 A–E 成果（刷新 :5177；试条件构造器/搜索选择器/新建组合/Function 面板）
+2. 可选深化：spec §6 远期项（Interface 多态 / scenario 沙箱 / 权限）、examples/api-agent.ts 实跑（需 API 凭据）、行情定时刷新自动化
 
 ## 关键文件索引
 - `docs/ontology-research.md` —— 调研报告（对抗验证版，✔3/✅/◐/○ 置信分级）
