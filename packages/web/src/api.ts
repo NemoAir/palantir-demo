@@ -37,6 +37,7 @@ export interface ParamDef {
 export interface ActionTypeView {
   apiName: string;
   displayName: string;
+  system?: boolean;
   parameters: ParamDef[];
   criteria: { apiName: string; displayName: string; message: string }[];
 }

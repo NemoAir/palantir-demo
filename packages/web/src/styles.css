@@ -193,6 +193,29 @@ input, select { font: inherit; }
 .lineage-title { position: absolute; left: 16px; font-size: 10px; letter-spacing: 0.14em; color: var(--muted); }
 .lineage-bar { position: relative; }
 
+/* 批A 新增 */
+.back-btn {
+  color: var(--semantic); font-size: 12px; margin-bottom: 10px; padding: 3px 0;
+}
+.back-btn:hover { text-decoration: underline; }
+.system-group { margin-top: 10px; }
+.system-group summary {
+  padding: 4px 16px; font-size: 11px; letter-spacing: 0.12em; color: var(--muted);
+  cursor: pointer; user-select: none; list-style-position: inside;
+}
+.system-group summary:hover { color: var(--text); }
+.audit-item .time-full { color: var(--muted); font-size: 10.5px; font-family: var(--mono); margin: 1px 0 3px; }
+.notif-item .time-full { color: var(--muted); font-size: 10px; font-family: var(--mono); opacity: 0.7; }
+.params-grid { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.param-pair { font-size: 11px; color: var(--text); }
+.param-pair .param-label { color: var(--muted); margin-right: 4px; }
+.valuation-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.valuation-kpis .kpi { background: var(--panel); border: 1px solid var(--line); border-left: 2px solid var(--kinetic); border-radius: 6px; padding: 10px 12px; }
+.valuation-kpis .label { color: var(--muted); font-size: 11px; margin-bottom: 3px; }
+.valuation-kpis .value { font-family: var(--mono); font-size: 17px; font-weight: 600; }
+.pnl-up { color: var(--up); }
+.pnl-down { color: var(--down); }
+
 /* 空态 */
 .empty { color: var(--muted); padding: 30px 0; text-align: center; }
 .error-banner {

@@ -214,10 +214,11 @@ export const astockActions: ActionTypeDef[] = [
     sideEffects: (_ctx, p) => [{ kind: 'notification', message: `预警 ${p.alertId} 已处理` }],
   },
   {
-    // 系统 Action：由 checkAlerts 的调用方触发，不在用户 Action 面板展示，
-    // 但走完整管线（criteria/审计/副作用）——Foundry 自动化同样经 Action 写回。
+    // 系统 Action：由 checkAlerts 的调用方（自动化/AI）触发，
+    // 走完整管线（criteria/审计/副作用）——Foundry 自动化同样经 Action 写回。
     apiName: 'markAlertTriggered',
-    displayName: '标记预警触发（系统）',
+    displayName: '标记预警触发',
+    system: true,
     parameters: [{ apiName: 'alertId', displayName: '预警ID', type: 'string' }],
     criteria: [
       {

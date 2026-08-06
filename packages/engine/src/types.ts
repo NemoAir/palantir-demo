@@ -97,6 +97,8 @@ export interface CriterionDef {
 export interface ActionTypeDef {
   apiName: string;
   displayName: string;
+  /** 系统 Action：由自动化/AI 流程调用（如巡逻触发），UI 折叠展示、不进常用面板。 */
+  system?: boolean;
   parameters: ParamDef[];
   criteria: CriterionDef[];
   /** 纯函数：产出本次要应用的 edits，不直接写库（写入由引擎原子提交）。 */

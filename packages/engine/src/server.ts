@@ -26,6 +26,7 @@ export function createApiServer(store: ObjectStore): http.Server {
     actionTypes: registry.actionTypes().map(a => ({
       apiName: a.apiName,
       displayName: a.displayName,
+      system: a.system ?? false,
       parameters: a.parameters,
       criteria: a.criteria.map(c => ({ apiName: c.apiName, displayName: c.displayName, message: c.message })),
     })),
