@@ -27,6 +27,51 @@ const fmt = (v: Value): string => {
   return String(v);
 };
 
+/* ---------- 引用/枚举/表达式的可读化（全部由 schema 元数据驱动） ---------- */
+/** objectType→pk→标题名 的缓存（由链接目标类型的 titleProperty 生成）。 */
+type TitleMap = Record<string, Record<string, string>>;
+
+/** 属性若是某外键链接的源端且目标声明了 titleProperty，返回目标类型定义。 */
+const fkTarget = (schema: SchemaView, type: string, prop: string): ObjectTypeDef | undefined => {
+  const lt = schema.linkTypes.find(l => l.source === type && l.mapping?.property === prop);
+  if (!lt) return undefined;
+  const target = schema.objectTypes.find(o => o.apiName === lt.target);
+  return target?.titleProperty ? target : undefined;
+};
+
+const OP_CN: Record<string, string> = { '<': '低于', '<=': '不高于', '>': '高于', '>=': '不低于', '=': '等于', '!=': '不等于', '~': '包含' };
+
+/** 过滤表达式的中文说明（解析正则镜像 engine/filter-parse）。解析失败返回 null，原样展示。 */
+const explainFilter = (schema: SchemaView, objectType: string, expr: string): string | null => {
+  const m = expr.match(/^(\w+)\s*(!=|>=|<=|=|<|>|~)\s*(.+)$/);
+  if (!m) return null;
+  const [, prop, op, val] = m;
+  const dn = schema.objectTypes.find(o => o.apiName === objectType)?.properties.find(p => p.apiName === prop)?.displayName ?? prop;
+  if (val === 'null') return op === '=' ? `${dn}为空` : op === '!=' ? `${dn}非空` : null;
+  return `${dn} ${OP_CN[op] ?? op} ${val}`;
+};
+
+/** 单元格渲染：枚举→彩色徽章；filterExpr→原文+中文；外键→主键+名称；其余按类型格式化。 */
+function renderCell(schema: SchemaView, titles: TitleMap, ot: ObjectTypeDef, propName: string, v: Value) {
+  if (propName === 'isWatched') return v === 1 || v === true ? <span className="watched">★ 自选</span> : <span className="null">—</span>;
+  if (v === null || v === undefined) return <span className="null">—</span>;
+  const p = ot.properties.find(pp => pp.apiName === propName);
+  if (p?.enumOptions) {
+    const o = p.enumOptions.find(e => e.value === String(v));
+    if (o) return <span className={`badge tone-${o.tone ?? 'info'}`}>{o.label}</span>;
+  }
+  if (p?.format?.kind === 'filterExpr') {
+    const cn = explainFilter(schema, p.format.objectType, String(v));
+    return <span className="cond"><code>{String(v)}</code>{cn && <span className="cond-cn">{cn}</span>}</span>;
+  }
+  const target = fkTarget(schema, ot.apiName, propName);
+  if (target) {
+    const title = titles[target.apiName]?.[String(v)];
+    if (title) return <span className="ref-cell"><span className="ref-pk">{fmt(v)}</span><span className="ref-name">{title}</span></span>;
+  }
+  return fmt(v);
+}
+
 /** 通用预填启发：参数名包含对象类型名（小写）→ 填入该对象主键值。 */
 const prefillFor = (action: ActionTypeView, typeApiName: string, pk: Value): Record<string, Value> => {
   const out: Record<string, Value> = {};
@@ -69,16 +114,36 @@ export function App() {
     }
   }, []);
 
+  /** 预载"被链接指向且有 titleProperty"的类型全量，建 pk→标题名缓存（外键翻名用）。 */
+  const [titles, setTitles] = useState<TitleMap>({});
+  const refreshTitles = useCallback((s: SchemaView) => {
+    const targets = new Set<string>();
+    for (const lt of s.linkTypes) {
+      if (s.objectTypes.find(o => o.apiName === lt.target)?.titleProperty) targets.add(lt.target);
+    }
+    for (const t of targets) {
+      const ot = s.objectTypes.find(o => o.apiName === t)!;
+      api.objects(t, { limit: 1000 }).then(rows => {
+        const m: Record<string, string> = {};
+        for (const r of rows) {
+          const title = r[ot.titleProperty!];
+          if (title !== null && title !== undefined) m[String(r[ot.primaryKey])] = String(title);
+        }
+        setTitles(prev => ({ ...prev, [t]: m }));
+      }).catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
-    api.schema().then(s => { setSchema(s); refreshCounts(s); })
+    api.schema().then(s => { setSchema(s); refreshCounts(s); refreshTitles(s); })
       .catch(e => setFatal(`无法连接本体 API（先运行 pnpm --filter engine serve）：${(e as Error).message}`));
-  }, [refreshCounts]);
+  }, [refreshCounts, refreshTitles]);
 
   const onActionDone = useCallback(() => {
     setLineagePlay(n => n + 1);
     setAuditKey(n => n + 1);
-    if (schema) refreshCounts(schema);
-  }, [schema, refreshCounts]);
+    if (schema) { refreshCounts(schema); refreshTitles(schema); }
+  }, [schema, refreshCounts, refreshTitles]);
 
   if (fatal) return <div className="error-banner" style={{ margin: 40 }}>{fatal}</div>;
   if (!schema) return <div className="empty" style={{ paddingTop: 80 }}>加载本体元数据…</div>;
@@ -91,7 +156,7 @@ export function App() {
           <span className="sub">迷你 Foundry · 本体 {schema.apiName}</span>
         </span>
         <span className="spacer" />
-        <RematerializeButton onDone={() => { setAuditKey(n => n + 1); if (schema) refreshCounts(schema); }} />
+        <RematerializeButton onDone={() => { setAuditKey(n => n + 1); if (schema) { refreshCounts(schema); refreshTitles(schema); } }} />
         <span className="legend">
           <span title="semantic elements：对象/属性/链接——世界里'有什么'（企业的名词）"><span className="dot dot-semantic" />语义（名词）对象 {schema.objectTypes.length} · 链接 {schema.linkTypes.length}</span>
           <span title="kinetic elements：Action/Function——对世界'能做什么'（企业的动词）"><span className="dot dot-kinetic" />动能（动词）Action {schema.actionTypes.length} · Function {schema.functions.length}</span>
@@ -160,6 +225,7 @@ export function App() {
             <ObjectList
               key={view.type}
               schema={schema}
+              titles={titles}
               type={view.type}
               onOpen={pk => setView({ kind: 'detail', type: view.type, pk })}
             />
@@ -168,6 +234,7 @@ export function App() {
             <ObjectDetail
               key={`${view.type}:${String(view.pk)}`}
               schema={schema}
+              titles={titles}
               type={view.type}
               pk={view.pk}
               refreshSignal={auditKey}
@@ -190,7 +257,7 @@ export function App() {
           )}
         </main>
 
-        <AuditRail refreshSignal={auditKey} schema={schema} onJump={(t, pk) => setView({ kind: 'detail', type: t, pk })} />
+        <AuditRail refreshSignal={auditKey} schema={schema} titles={titles} onJump={(t, pk) => setView({ kind: 'detail', type: t, pk })} />
       </div>
 
       <LineageBar play={lineagePlay} />
@@ -199,8 +266,8 @@ export function App() {
 }
 
 /* ---------- 对象列表 ---------- */
-function ObjectList({ schema, type, onOpen }: {
-  schema: SchemaView; type: string; onOpen: (pk: Value) => void;
+function ObjectList({ schema, titles, type, onOpen }: {
+  schema: SchemaView; titles: TitleMap; type: string; onOpen: (pk: Value) => void;
 }) {
   const ot = schema.objectTypes.find(o => o.apiName === type)!;
   const [rows, setRows] = useState<ObjectRow[] | null>(null);
@@ -211,10 +278,13 @@ function ObjectList({ schema, type, onOpen }: {
   const [fOp, setFOp] = useState('<');
   const [fVal, setFVal] = useState('');
 
-  const fPropType = ot.properties.find(p => p.apiName === fProp)?.type ?? 'string';
+  const fPropDef = ot.properties.find(p => p.apiName === fProp);
+  const fPropType = fPropDef?.type ?? 'string';
+  const fRefTarget = fkTarget(schema, type, fProp);
   const ops = OPS_BY_TYPE[fPropType];
   const changeProp = (name: string) => {
     setFProp(name);
+    setFVal('');
     const t = ot.properties.find(p => p.apiName === name)?.type ?? 'string';
     if (!OPS_BY_TYPE[t].includes(fOp)) setFOp(OPS_BY_TYPE[t][0]);
   };
@@ -247,7 +317,21 @@ function ObjectList({ schema, type, onOpen }: {
           {ops.map(o => <option key={o} value={o}>{OP_LABEL(o)}</option>)}
         </select>
         {fOp !== '=null' && fOp !== '!=null' && (
-          <input value={fVal} onChange={e => setFVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && addFilter()} placeholder="值" />
+          fPropDef?.enumOptions ? (
+            <select value={fVal} onChange={e => setFVal(e.target.value)}>
+              <option value="">— 选值 —</option>
+              {fPropDef.enumOptions.map(o => <option key={o.value} value={o.value}>{o.label}{o.label !== o.value ? `（${o.value}）` : ''}</option>)}
+            </select>
+          ) : fRefTarget ? (
+            <span className="filter-ref" key={`${fProp}:${where.length}`}>
+              <ObjectRefPicker schema={schema} objectType={fRefTarget.apiName} value={fVal} onChange={setFVal} />
+            </span>
+          ) : (
+            <input
+              type={fPropType === 'number' ? 'number' : 'text'}
+              value={fVal} onChange={e => setFVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && addFilter()} placeholder="值"
+            />
+          )
         )}
         <button className="btn-kinetic" style={{ background: 'var(--semantic)', color: '#0b1524' }} onClick={addFilter}>过滤</button>
         {where.map((w, i) => (
@@ -276,7 +360,7 @@ function ObjectList({ schema, type, onOpen }: {
           <tbody>
             {rows.map(r => (
               <tr key={String(r[ot.primaryKey])} onClick={() => onOpen(r[ot.primaryKey])}>
-                {ot.properties.map(p => <td key={p.apiName} className={p.type === 'number' ? 'num' : ''}>{cell(r[p.apiName], p.apiName)}</td>)}
+                {ot.properties.map(p => <td key={p.apiName} className={p.type === 'number' ? 'num' : ''}>{renderCell(schema, titles, ot, p.apiName, r[p.apiName])}</td>)}
               </tr>
             ))}
           </tbody>
@@ -287,15 +371,9 @@ function ObjectList({ schema, type, onOpen }: {
   );
 }
 
-function cell(v: Value, prop: string) {
-  if (prop === 'isWatched') return v === 1 || v === true ? <span className="watched">★ 自选</span> : <span className="null">—</span>;
-  if (v === null || v === undefined) return <span className="null">—</span>;
-  return fmt(v);
-}
-
 /* ---------- 对象详情（属性 + 链接遍历 + 相关动作） ---------- */
-function ObjectDetail({ schema, type, pk, onBack, onJump, onAction, refreshSignal }: {
-  schema: SchemaView; type: string; pk: Value; refreshSignal: number;
+function ObjectDetail({ schema, titles, type, pk, onBack, onJump, onAction, refreshSignal }: {
+  schema: SchemaView; titles: TitleMap; type: string; pk: Value; refreshSignal: number;
   onBack: () => void;
   onJump: (type: string, pk: Value) => void;
   onAction: (name: string, prefill: Record<string, Value>) => void;
@@ -346,7 +424,7 @@ function ObjectDetail({ schema, type, pk, onBack, onJump, onAction, refreshSigna
         {ot.properties.map(p => (
           <div className="prop-card" key={p.apiName}>
             <div className="label">{p.displayName}</div>
-            <div className="value">{cell(row[p.apiName], p.apiName)}</div>
+            <div className="value">{renderCell(schema, titles, ot, p.apiName, row[p.apiName])}</div>
           </div>
         ))}
       </div>
@@ -460,6 +538,7 @@ function ActionPanel({ schema, name, prefill, onDone }: {
           schema={schema}
           param={p}
           value={values[p.apiName]}
+          allValues={values}
           onChange={val => setValues(v => ({ ...v, [p.apiName]: val }))}
         />
       ))}
@@ -486,9 +565,26 @@ function ActionPanel({ schema, name, prefill, onDone }: {
 }
 
 /* ---------- 参数渲染器：editor 元数据 → 下拉 / 对象搜索点选 / 条件构造器 ---------- */
-function ParamField({ schema, param, value, onChange }: {
-  schema: SchemaView; param: import('./api').ParamDef; value: string; onChange: (v: string) => void;
+function ParamField({ schema, param, value, allValues, onChange }: {
+  schema: SchemaView; param: import('./api').ParamDef; value: string;
+  allValues?: Record<string, string>; onChange: (v: string) => void;
 }) {
+  // hint 元数据：另一参数选定对象后，实时取该对象的参考属性值，可一键填入
+  const hint = param.hint;
+  const fromVal = hint ? (allValues?.[hint.fromParam] ?? '') : '';
+  const [hintVal, setHintVal] = useState<Value | null>(null);
+  useEffect(() => {
+    if (!hint || !fromVal) { setHintVal(null); return; }
+    let live = true;
+    api.object(hint.objectType, fromVal)
+      .then(r => { if (live) setHintVal(r[hint.property] ?? null); })
+      .catch(() => { if (live) setHintVal(null); });
+    return () => { live = false; };
+  }, [hint, fromVal]);
+  const hintLabel = hint
+    ? schema.objectTypes.find(o => o.apiName === hint.objectType)?.properties.find(p => p.apiName === hint.property)?.displayName ?? hint.property
+    : '';
+
   const label = (
     <label>
       {param.displayName}{param.required === false ? '（可选）' : ''}{' '}
@@ -515,6 +611,11 @@ function ParamField({ schema, param, value, onChange }: {
       ) : (
         <input type={param.type === 'number' ? 'number' : 'text'} value={value} onChange={ev => onChange(ev.target.value)} />
       )}
+      {hint && hintVal !== null && (
+        <button type="button" className="hint-fill" onClick={() => onChange(String(hintVal))}>
+          当前{hintLabel}：<b>{fmt(hintVal)}</b>（点击填入）
+        </button>
+      )}
     </div>
   );
 }
@@ -528,11 +629,17 @@ function ObjectRefPicker({ schema, objectType, value, onChange }: {
   const [text, setText] = useState('');
   const [open, setOpen] = useState(false);
 
+  // 实例的展示名取自 titleProperty 元数据（无声明时回退 name 字段）
+  const rowTitle = useCallback((r: ObjectRow) => {
+    const t = ot.titleProperty ? r[ot.titleProperty] : r.name;
+    return t !== null && t !== undefined ? String(t) : '';
+  }, [ot.titleProperty]);
+
   const rowLabel = useCallback((r: ObjectRow) => {
     const pk = String(r[ot.primaryKey]);
-    const name = r.name !== undefined && r.name !== null ? String(r.name) : '';
+    const name = rowTitle(r);
     return name && name !== pk ? `${name}（${pk}）` : pk;
-  }, [ot.primaryKey]);
+  }, [ot.primaryKey, rowTitle]);
 
   useEffect(() => {
     api.objects(objectType, { limit: 500 }).then(rows => {
@@ -551,7 +658,7 @@ function ObjectRefPicker({ schema, objectType, value, onChange }: {
   const candidates = (all ?? [])
     .filter(r => {
       if (!q || (selectedLabel && text === rowLabel(selectedLabel))) return true;
-      return String(r[ot.primaryKey]).toLowerCase().includes(q) || String(r.name ?? '').toLowerCase().includes(q);
+      return String(r[ot.primaryKey]).toLowerCase().includes(q) || rowTitle(r).toLowerCase().includes(q);
     })
     .slice(0, 8);
 
@@ -576,7 +683,11 @@ function ObjectRefPicker({ schema, objectType, value, onChange }: {
           })}
         </div>
       )}
-      {value && <div className="ref-selected">已选：{value}</div>}
+      {value && (
+        <div className="ref-selected">
+          已选：{value}{selectedLabel && rowTitle(selectedLabel) && rowTitle(selectedLabel) !== String(value) ? ` ${rowTitle(selectedLabel)}` : ''}
+        </div>
+      )}
     </div>
   );
 }
@@ -668,7 +779,7 @@ function FunctionPanel({ schema, name, prefill }: {
       <div className="subtitle">Function——本体原生只读逻辑（算不做；要落地写入需经 Action）</div>
       {fn.docs && <div className="docs-note">{fn.docs}</div>}
       {fn.parameters.map(p => (
-        <ParamField key={p.apiName} schema={schema} param={p} value={values[p.apiName]} onChange={v => setValues(s => ({ ...s, [p.apiName]: v }))} />
+        <ParamField key={p.apiName} schema={schema} param={p} value={values[p.apiName]} allValues={values} onChange={v => setValues(s => ({ ...s, [p.apiName]: v }))} />
       ))}
       <div className="submit-row">
         <button className="btn-submit" onClick={run} disabled={busy}>{busy ? '计算中…' : '运行 Function'}</button>
@@ -737,21 +848,29 @@ function RematerializeButton({ onDone }: { onDone: () => void }) {
   );
 }
 
-function AuditRail({ refreshSignal, schema, onJump }: {
-  refreshSignal: number; schema: SchemaView; onJump: (type: string, pk: Value) => void;
+function AuditRail({ refreshSignal, schema, titles, onJump }: {
+  refreshSignal: number; schema: SchemaView; titles: TitleMap; onJump: (type: string, pk: Value) => void;
 }) {
   const [audit, setAudit] = useState<AuditRecord[]>([]);
   const [notifs, setNotifs] = useState<{ id: number; message: string; at: string; link?: { objectType: string; pk: Value } }[]>([]);
   const lastTop = useRef<number>(0);
   const actionMeta = useMemo(() => new Map(schema.actionTypes.map(a => [a.apiName, a])), [schema]);
 
-  /** 参数按 schema 的 displayName 渲染成可读键值行（替代 raw JSON）。 */
+  /** 参数按 schema 的 displayName 渲染成可读键值行；对象引用翻名、枚举翻标签。 */
   const readableParams = (action: string, params: Record<string, Value>): { label: string; value: string }[] => {
     const meta = actionMeta.get(action);
-    return Object.entries(params).map(([k, v]) => ({
-      label: meta?.parameters.find(p => p.apiName === k)?.displayName ?? k,
-      value: String(v),
-    }));
+    return Object.entries(params).map(([k, v]) => {
+      const pdef = meta?.parameters.find(p => p.apiName === k);
+      let value = String(v);
+      if (pdef?.editor?.kind === 'objectRef') {
+        const t = titles[pdef.editor.objectType]?.[String(v)];
+        if (t && t !== value) value = `${value} ${t}`;
+      } else if (pdef?.editor?.kind === 'enum') {
+        const o = pdef.editor.options.find(op => op.value === String(v));
+        if (o && o.label !== o.value) value = o.label;
+      }
+      return { label: pdef?.displayName ?? k, value };
+    });
   };
 
   useEffect(() => {

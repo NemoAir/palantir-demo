@@ -78,6 +78,25 @@ describe('loadOntology', () => {
     expect(() => loadOntology(s)).toThrowError(/duplicate traversal/);
   });
 
+  it('titleProperty：指向存在属性通过，指向不存在属性被拒', () => {
+    const ok = clone();
+    ok.objectTypes[0].titleProperty = 'name';
+    expect(() => loadOntology(ok)).not.toThrow();
+
+    const bad = clone();
+    bad.objectTypes[0].titleProperty = 'ghostTitle';
+    expect(() => loadOntology(bad)).toThrowError(/titleProperty/);
+  });
+
+  it('属性 format 引用未注册对象类型被拒', () => {
+    const s = clone();
+    s.objectTypes[0].properties.push({
+      apiName: 'cond', displayName: '条件', type: 'string', nullable: true,
+      format: { kind: 'filterExpr', objectType: 'Ghost' },
+    });
+    expect(() => loadOntology(s)).toThrowError(/Ghost/);
+  });
+
   it('linkByTraverseName 双向解析', () => {
     const reg = loadOntology(zoo);
     const a = reg.linkByTraverseName('Animal', 'keeper');

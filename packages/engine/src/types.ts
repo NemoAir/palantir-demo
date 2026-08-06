@@ -7,6 +7,13 @@ export interface PropertyDef {
   type: PropertyType;
   /** 默认 false。主键属性必须为非 nullable（OMS 校验）。 */
   nullable?: boolean;
+  /**
+   * 受限取值集（含展示标签与色调）。消费端据此渲染徽章/下拉；
+   * tone 为通用视觉语义：up/down（涨跌向）、info/danger/muted。
+   */
+  enumOptions?: { value: string; label: string; tone?: 'up' | 'down' | 'info' | 'danger' | 'muted' }[];
+  /** 内容格式提示：filterExpr = 该属性存的是过滤表达式（引用 objectType 的注册属性），消费端可解析后可读化展示。 */
+  format?: { kind: 'filterExpr'; objectType: string };
 }
 
 export interface CsvDatasource {
@@ -20,6 +27,8 @@ export interface ObjectTypeDef {
   displayName: string;
   /** 必须指向 properties 中的一个非 nullable 属性 */
   primaryKey: string;
+  /** 标题属性：实例的人类可读名（如名称列）。消费端在展示外键/引用时可据此把主键值翻成名字。 */
+  titleProperty?: string;
   properties: PropertyDef[];
   /** 无 datasource 的类型为纯编辑型（M2 起才有对象产生），M1 仅建空表 */
   datasource?: CsvDatasource;
@@ -97,6 +106,11 @@ export interface ParamDef {
   /** 默认必填；显式 false 才可缺省。 */
   required?: boolean;
   editor?: ParamEditor;
+  /**
+   * 参考值提示：本参数与"另一参数(fromParam)所指 objectType 实例"的 property 相关。
+   * 消费端可实时展示该属性现值供参考/一键填入（如成交价旁显示最新价）。
+   */
+  hint?: { fromParam: string; objectType: string; property: string };
 }
 
 /** 提交前提：全部通过才允许应用 edits；失败时引擎报出 apiName 与 message。 */

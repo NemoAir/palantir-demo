@@ -3,17 +3,22 @@
 export type Value = string | number | boolean | null;
 export type ObjectRow = Record<string, Value>;
 
+export type EnumTone = 'up' | 'down' | 'info' | 'danger' | 'muted';
+
 export interface PropertyDef {
   apiName: string;
   displayName: string;
   type: 'string' | 'number' | 'boolean' | 'date';
   nullable?: boolean;
+  enumOptions?: { value: string; label: string; tone?: EnumTone }[];
+  format?: { kind: 'filterExpr'; objectType: string };
 }
 
 export interface ObjectTypeDef {
   apiName: string;
   displayName: string;
   primaryKey: string;
+  titleProperty?: string;
   properties: PropertyDef[];
   datasource?: { kind: 'csv'; path: string };
 }
@@ -25,6 +30,7 @@ export interface LinkTypeDef {
   target: string;
   sourceToTargetName: string;
   targetToSourceName: string;
+  mapping: { kind: 'foreignKey'; property: string };
 }
 
 export type ParamEditor =
@@ -38,6 +44,7 @@ export interface ParamDef {
   type: 'string' | 'number' | 'boolean' | 'date';
   required?: boolean;
   editor?: ParamEditor;
+  hint?: { fromParam: string; objectType: string; property: string };
 }
 
 export interface ActionTypeView {

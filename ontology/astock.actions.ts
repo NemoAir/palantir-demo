@@ -111,7 +111,11 @@ export const astockActions: ActionTypeDef[] = [
       { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
       { apiName: 'side', displayName: '方向', type: 'string', editor: { kind: 'enum', options: [{ value: 'buy', label: '买入' }, { value: 'sell', label: '卖出' }] } },
       { apiName: 'quantity', displayName: '数量(股)', type: 'number' },
-      { apiName: 'price', displayName: '成交价', type: 'number' },
+      {
+        apiName: 'price', displayName: '成交价', type: 'number',
+        // 参考值提示：选定股票后，UI 在本字段旁显示该股最新价、可一键填入
+        hint: { fromParam: 'stockCode', objectType: 'Stock', property: 'latestPrice' },
+      },
     ],
     criteria: [
       {

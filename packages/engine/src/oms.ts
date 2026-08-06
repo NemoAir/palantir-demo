@@ -89,6 +89,22 @@ function assertEditor(
   }
 }
 
+function assertHint(
+  path: string,
+  hint: import('./types.js').ParamDef['hint'],
+  siblingParams: readonly import('./types.js').ParamDef[],
+  typeMap: Map<string, ObjectTypeDef>,
+): void {
+  if (!hint) return;
+  if (!siblingParams.find(p => p.apiName === hint.fromParam))
+    throw new OntologyValidationError(path, `hint.fromParam '${hint.fromParam}' not found among parameters`);
+  const target = typeMap.get(hint.objectType);
+  if (!target)
+    throw new OntologyValidationError(path, `hint references unknown object type '${hint.objectType}'`);
+  if (!target.properties.find(p => p.apiName === hint.property))
+    throw new OntologyValidationError(path, `hint property '${hint.property}' not found on '${hint.objectType}'`);
+}
+
 export function loadOntology(schema: OntologySchema): OntologyRegistry {
   assertApiName('apiName', schema.apiName);
 
@@ -114,9 +130,23 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
       throw new OntologyValidationError(`${base}.primaryKey`, `primaryKey '${ot.primaryKey}' not found in properties`);
     if (pk.nullable)
       throw new OntologyValidationError(`${base}.primaryKey`, `primaryKey '${ot.primaryKey}' must not be nullable`);
+
+    if (ot.titleProperty && !ot.properties.find(p => p.apiName === ot.titleProperty))
+      throw new OntologyValidationError(`${base}.titleProperty`, `titleProperty '${ot.titleProperty}' not found in properties`);
   }
 
   const typeMap = new Map(schema.objectTypes.map(ot => [ot.apiName, ot]));
+
+  // 属性级元数据校验：enumOptions 非空、format 引用已注册类型
+  for (const ot of schema.objectTypes) {
+    for (const p of ot.properties) {
+      const ppath = `objectTypes.${ot.apiName}.properties.${p.apiName}`;
+      if (p.enumOptions && p.enumOptions.length === 0)
+        throw new OntologyValidationError(ppath, `enumOptions must be non-empty when declared`);
+      if (p.format && !typeMap.has(p.format.objectType))
+        throw new OntologyValidationError(ppath, `format references unknown object type '${p.format.objectType}'`);
+    }
+  }
   const seenLinks = new Set<string>();
   for (const link of schema.linkTypes) {
     const base = `linkTypes.${link.apiName}`;
@@ -160,6 +190,7 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
         throw new OntologyValidationError(ppath, `duplicate parameter '${p.apiName}'`);
       seenParams.add(p.apiName);
       assertEditor(ppath, p.editor, typeMap);
+      assertHint(ppath, p.hint, a.parameters, typeMap);
     }
 
     const seenCriteria = new Set<string>();
@@ -182,6 +213,7 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
       const ppath = `${base}.parameters.${p.apiName}`;
       assertApiName(ppath, p.apiName);
       assertEditor(ppath, p.editor, typeMap);
+      assertHint(ppath, p.hint, f.parameters ?? [], typeMap);
     }
   }
 

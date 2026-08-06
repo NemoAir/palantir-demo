@@ -16,6 +16,7 @@ export const astock = defineOntology({
       apiName: 'Stock',
       displayName: '股票',
       primaryKey: 'code',
+      titleProperty: 'name',
       properties: [
         { apiName: 'code', displayName: '股票代码', type: 'string' },
         { apiName: 'name', displayName: '名称', type: 'string' },
@@ -33,6 +34,7 @@ export const astock = defineOntology({
       apiName: 'Industry',
       displayName: '申万一级行业',
       primaryKey: 'code',
+      titleProperty: 'name',
       properties: [
         { apiName: 'code', displayName: '行业代码', type: 'string' },
         { apiName: 'name', displayName: '行业名称', type: 'string' },
@@ -43,6 +45,7 @@ export const astock = defineOntology({
       apiName: 'Portfolio',
       displayName: '模拟组合',
       primaryKey: 'id',
+      titleProperty: 'name',
       properties: [
         { apiName: 'id', displayName: '组合ID', type: 'string' },
         { apiName: 'name', displayName: '组合名称', type: 'string' },
@@ -71,7 +74,14 @@ export const astock = defineOntology({
       properties: [
         { apiName: 'id', displayName: '笔记ID', type: 'string' },
         { apiName: 'stockCode', displayName: '股票代码', type: 'string' },
-        { apiName: 'stance', displayName: '结论', type: 'string' },
+        {
+          apiName: 'stance', displayName: '结论', type: 'string',
+          enumOptions: [
+            { value: '看多', label: '看多', tone: 'up' },
+            { value: '看空', label: '看空', tone: 'down' },
+            { value: '中性', label: '中性', tone: 'muted' },
+          ],
+        },
         { apiName: 'reason', displayName: '理由', type: 'string' },
         { apiName: 'createdAt', displayName: '创建时间', type: 'date' },
       ],
@@ -84,8 +94,18 @@ export const astock = defineOntology({
       properties: [
         { apiName: 'id', displayName: '预警ID', type: 'string' },
         { apiName: 'stockCode', displayName: '股票代码', type: 'string' },
-        { apiName: 'condition', displayName: '条件表达式', type: 'string' },
-        { apiName: 'status', displayName: '状态', type: 'string' },
+        {
+          apiName: 'condition', displayName: '条件表达式', type: 'string',
+          format: { kind: 'filterExpr', objectType: 'Stock' },
+        },
+        {
+          apiName: 'status', displayName: '状态', type: 'string',
+          enumOptions: [
+            { value: 'armed', label: '待命', tone: 'info' },
+            { value: 'triggered', label: '已触发', tone: 'danger' },
+            { value: 'resolved', label: '已处理', tone: 'muted' },
+          ],
+        },
         { apiName: 'createdAt', displayName: '创建时间', type: 'date' },
       ],
       // 纯编辑型：M2 由 setAlert Action 创建

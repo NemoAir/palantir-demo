@@ -66,6 +66,22 @@ describe('OMS 动能层扩展', () => {
     expect(() => loadOntology(withEditor({ kind: 'objectRef', objectType: 'Keeper' }))).not.toThrow();
   });
 
+  it('参数 hint：fromParam 必须是同 Action 的参数、引用的类型与属性必须存在', () => {
+    const base = clone().actionTypes![0];
+    const withHint = (hint: unknown) => {
+      const s = clone();
+      s.actionTypes = [{
+        ...base,
+        parameters: [base.parameters[0], { ...base.parameters[1], hint: hint as never }],
+      }];
+      return s;
+    };
+    expect(() => loadOntology(withHint({ fromParam: 'ghost', objectType: 'Keeper', property: 'id' }))).toThrowError(/fromParam/);
+    expect(() => loadOntology(withHint({ fromParam: 'tag', objectType: 'Ghost', property: 'x' }))).toThrowError(/Ghost/);
+    expect(() => loadOntology(withHint({ fromParam: 'tag', objectType: 'Animal', property: 'ghostProp' }))).toThrowError(/ghostProp/);
+    expect(() => loadOntology(withHint({ fromParam: 'tag', objectType: 'Animal', property: 'weightKg' }))).not.toThrow();
+  });
+
   it('Function 可声明 parameters（含 editor），注册后可取回', () => {
     const s = clone();
     s.functions = [{
