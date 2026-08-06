@@ -7,6 +7,64 @@
 这个仓库就是结果。引擎代码里没有一个金融词汇，题材全部收在 `ontology/` 一个目录里。
 换个题材（库存、工单、病历）只需要换掉这个目录——这不是口号，是验收清单里的一条 grep。
 
+## 界面一览
+
+不想跑也能看个大概（截图全部来自真实运行状态，`node scripts/take-screenshots.mjs` 可一键重生成）。
+
+**语义元素：对象与链接**
+
+50 只真实科创板 50 对象，过滤、排序，右栏是实时审计流，底部是闭环血缘条：
+
+![股票对象集](docs/screenshots/01-stock-list.png)
+
+对象详情：属性卡 + 沿链接遍历（行业↔持仓↔研判↔预警）+ 相关动作：
+
+![对象详情](docs/screenshots/02-stock-detail.png)
+
+组合详情内嵌估值卡（Function 实时计算）：
+
+![组合详情](docs/screenshots/03-portfolio-detail.png)
+
+**动能元素：动词与治理**
+
+模拟调仓：搜索选股、当前最新价一键填入、提交前提（Submission Criteria）逐条列出：
+
+![模拟调仓](docs/screenshots/06-trade-form.png)
+
+预警规则：代码自动翻名、状态彩色徽章、条件表达式带中文说明：
+
+![预警规则](docs/screenshots/04-alert-list.png)
+
+研判笔记（标题列来自一次"本体演进"：schema 加一个属性，全端自动跟上）：
+
+![研判笔记](docs/screenshots/05-note-list.png)
+
+组合估值 Function：KPI 卡 + 持仓明细，标签全部来自元数据：
+
+![组合估值](docs/screenshots/07-valuation-function.png)
+
+预警扫描：命中清单行尾直接给出系统动词「标记预警触发」——发现与落账分离：
+
+![预警扫描](docs/screenshots/08-check-alerts.png)
+
+**审计、概念与 AI**
+
+决策活动页：每一笔 Action 的完整留痕，分页可翻：
+
+![决策活动](docs/screenshots/09-activity-audit.png)
+
+概念地图：核心词汇一页讲清：
+
+![概念地图](docs/screenshots/10-concepts.png)
+
+数据流向图：从数据源到四个消费端，存储与治理不变量都画在页面里：
+
+![数据流向](docs/screenshots/11-dataflow.png)
+
+AI 助手实录：真实的一轮对话——工具调用时间线、估值回答、可展开的原始报文、多轮追问输入框：
+
+![AI 助手](docs/screenshots/12-ai-chat.png)
+
 ## 跑起来
 
 前置：Node.js ≥ 20、pnpm ≥ 9，macOS / Linux / Windows 均可。三条命令，不需要任何数据库服务或密钥：
@@ -50,8 +108,9 @@ SDK 直连 Anthropic 需要网络可达，必要时配 HTTPS_PROXY。）
 ## 更新行情数据（可选）
 
 仓库自带 2026-08-04 收盘后的真实科创板 50 快照，不更新也能完整体验。想换新行情有两条路：
-在 Claude 会话里让 AI 从数据源拉取、整理落进 `datasets/*.csv`（我平时就这么干），
-或者自写取数脚本生成同结构的 CSV（列说明见 [datasets/README.md](datasets/README.md)）。
+在 Claude 会话里让 AI 从数据源拉取、整理落进 `datasets/*.csv`（我平时就这么干——依赖的是
+我本机私有的金融数据技能，不随仓库分发），或者自写取数脚本生成同结构的 CSV
+（列说明见 [datasets/README.md](datasets/README.md)，任何数据源都行）。
 数据源密钥（同花顺问财 / 东方财富）的环境变量约定见 [.env.example](.env.example)——
 引擎零联网，这些 key 只在取数那一步用，永不入库。换完 CSV 后点页面上的
 「⟳ 重新物化数据集」或跑 `pnpm cli materialize`，你的组合、研判、预警会经编辑账本原样重放回来。
