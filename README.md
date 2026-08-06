@@ -47,6 +47,15 @@ SDK 直连 Anthropic 需要网络可达，必要时配 HTTPS_PROXY。）
 顺带一提：用 Claude Code 打开本仓库会自动连上 `.mcp.json` 里的本体 MCP server，
 在编辑器对话里也能直接查询、执行 Action——和网页入口是同一套工具、同一条管线。
 
+## 更新行情数据（可选）
+
+仓库自带 2026-08-04 收盘后的真实科创板 50 快照，不更新也能完整体验。想换新行情有两条路：
+在 Claude 会话里让 AI 从数据源拉取、整理落进 `datasets/*.csv`（我平时就这么干），
+或者自写取数脚本生成同结构的 CSV（列说明见 [datasets/README.md](datasets/README.md)）。
+数据源密钥（同花顺问财 / 东方财富）的环境变量约定见 [.env.example](.env.example)——
+引擎零联网，这些 key 只在取数那一步用，永不入库。换完 CSV 后点页面上的
+「⟳ 重新物化数据集」或跑 `pnpm cli materialize`，你的组合、研判、预警会经编辑账本原样重放回来。
+
 ## 我对 Ontology 的理解
 
 做完这个项目，我把文档里那些抽象概念落成了自己的话：

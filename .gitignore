@@ -3,3 +3,6 @@ dist/
 *.db
 *.db-journal
 packages/engine/test/generated/
+.env
+.env.*
+!.env.example
