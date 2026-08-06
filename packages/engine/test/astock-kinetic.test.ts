@@ -152,6 +152,32 @@ describe('astock 动能层（6 Action + 3 Function）', () => {
       .toMatchObject({ ok: false, failedCriterion: 'noteExists' });
   });
 
+  it('writeResearchNote 可带标题；updateResearchNote 可只改单个字段、全缺省被拒', () => {
+    actions.execute('writeResearchNote', { stockCode: '688981', stance: '看多', reason: '初判', title: '制程扩产跟踪' });
+    expect(store.get('ResearchNote', 'RN-1')?.title).toBe('制程扩产跟踪');
+
+    // 不带标题创建：title 为空（不是必填）
+    actions.execute('writeResearchNote', { stockCode: '688111', stance: '中性', reason: '观察' });
+    expect(store.get('ResearchNote', 'RN-2')?.title ?? null).toBeNull();
+
+    // 只改标题：其余字段原样保留
+    const r1 = actions.execute('updateResearchNote', { noteId: 'RN-1', title: '扩产与估值再平衡' });
+    expect(r1.ok).toBe(true);
+    const after = store.get('ResearchNote', 'RN-1')!;
+    expect(after.title).toBe('扩产与估值再平衡');
+    expect(after.stance).toBe('看多');
+    expect(after.reason).toBe('初判');
+
+    // 只改结论
+    expect(actions.execute('updateResearchNote', { noteId: 'RN-1', stance: '中性' }).ok).toBe(true);
+    expect(store.get('ResearchNote', 'RN-1')?.stance).toBe('中性');
+    expect(store.get('ResearchNote', 'RN-1')?.reason).toBe('初判');
+
+    // 一个字段都不提供 → atLeastOneField 拒绝
+    expect(actions.execute('updateResearchNote', { noteId: 'RN-1' }))
+      .toMatchObject({ ok: false, failedCriterion: 'atLeastOneField' });
+  });
+
   it('screenStocks 与直接 query 等价', () => {
     const byFn = fns.call('screenStocks', { where: 'pe<100' }) as { code: string }[];
     const direct = oss.query('Stock', [{ property: 'pe', op: 'lt', value: 100 }]);

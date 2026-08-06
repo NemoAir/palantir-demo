@@ -71,8 +71,11 @@ export const astock = defineOntology({
       apiName: 'ResearchNote',
       displayName: '研判笔记',
       primaryKey: 'id',
+      titleProperty: 'title',
       properties: [
         { apiName: 'id', displayName: '笔记ID', type: 'string' },
+        // 本体演进示例：批H 新增可空标题——加一个属性，UI 列 / 表单 / AI 工具全自动跟上
+        { apiName: 'title', displayName: '标题', type: 'string', nullable: true },
         { apiName: 'stockCode', displayName: '股票代码', type: 'string' },
         {
           apiName: 'stance', displayName: '结论', type: 'string',

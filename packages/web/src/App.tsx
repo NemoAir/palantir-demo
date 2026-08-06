@@ -253,7 +253,7 @@ export function App() {
             />
           )}
           {view.kind === 'fn' && (
-            <FunctionPanel key={view.name} schema={schema} name={view.name} prefill={view.prefill} />
+            <FunctionPanel key={view.name} schema={schema} name={view.name} prefill={view.prefill} onDone={onActionDone} />
           )}
         </main>
 
@@ -418,7 +418,7 @@ function ObjectDetail({ schema, titles, type, pk, onBack, onJump, onAction, refr
   return (
     <>
       <div className="crumb"><button onClick={onBack}>{ot.displayName}</button> / <span style={{ fontFamily: 'var(--mono)' }}>{String(pk)}</span></div>
-      <h2>{String(row.name ?? pk)} <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 12 }}>{ot.displayName}</span></h2>
+      <h2>{String((ot.titleProperty ? row[ot.titleProperty] : null) ?? row.name ?? pk)} <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 12 }}>{ot.displayName}</span></h2>
       <div className="section-label">属性（Properties）</div>
       <div className="detail-grid">
         {ot.properties.map(p => (
@@ -524,14 +524,8 @@ function ActionPanel({ schema, name, prefill, onDone }: {
 
   const failedCriterion = result && !result.ok && result.stage === 'criteria' ? result.failedCriterion : null;
 
-  return (
-    <div className="action-panel">
-      <div className="panel-head">
-        <h2>{action.displayName}</h2>
-        <span className="api-name">{action.apiName}</span>
-      </div>
-      <div className="subtitle">Action Type——受治理的写操作：参数校验 → 提交前提 → 原子提交 → 审计</div>
-      {action.docs && <div className="docs-note">{action.docs}</div>}
+  const formBody = (
+    <>
       {action.parameters.map(p => (
         <ParamField
           key={p.apiName}
@@ -560,6 +554,30 @@ function ActionPanel({ schema, name, prefill, onDone }: {
       {result?.ok && result.sideEffects.length > 0 && (
         <div className="subtitle" style={{ marginTop: 10 }}>副作用：{result.sideEffects.map(s => s.message).join('；')}</div>
       )}
+    </>
+  );
+
+  return (
+    <div className="action-panel">
+      <div className="panel-head">
+        <h2>{action.displayName}</h2>
+        <span className="api-name">{action.apiName}</span>
+      </div>
+      <div className="subtitle">Action Type——受治理的写操作：参数校验 → 提交前提 → 原子提交 → 审计</div>
+      {action.docs && <div className="docs-note">{action.docs}</div>}
+      {action.system ? (
+        <>
+          <div className="system-note">
+            ⚙ 这是系统动词——正常路径由自动化调用，人不手填：跑「预警扫描」得到命中清单，
+            在结果行点「标记预警触发」即模拟自动化落账（同一治理管线，审计标系统动词）。
+            人工要做的是处理已触发的预警，请用「处理预警」。
+          </div>
+          <details className="system-manual">
+            <summary>演示用：手动执行一次（观察审计里系统动词的记录）</summary>
+            {formBody}
+          </details>
+        </>
+      ) : formBody}
     </div>
   );
 }
@@ -740,8 +758,8 @@ function FilterExprBuilder({ schema, objectType, value, onChange }: {
 }
 
 /* ---------- Function 运行面板 ---------- */
-function FunctionPanel({ schema, name, prefill }: {
-  schema: SchemaView; name: string; prefill?: Record<string, Value>;
+function FunctionPanel({ schema, name, prefill, onDone }: {
+  schema: SchemaView; name: string; prefill?: Record<string, Value>; onDone?: () => void;
 }) {
   const fn = schema.functions.find(f => f.apiName === name)!;
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -770,6 +788,28 @@ function FunctionPanel({ schema, name, prefill }: {
     }
   };
 
+  /** 通用行动作启发：结果行的键能覆盖某系统 Action 的全部必填参数 → 提供一键执行。
+   * 这就是"自动化"的最小形态：Function 发现 → 结果行携带参数 → 系统动词落账。 */
+  const rowSystemActions = (row: Record<string, Value>) =>
+    schema.actionTypes.filter(a =>
+      a.system && a.parameters.filter(p => p.required !== false).every(p => row[p.apiName] !== undefined));
+
+  const runRowAction = async (a: ActionTypeView, row: Record<string, Value>) => {
+    setBusy(true); setErr(null);
+    try {
+      const params: Record<string, Value> = {};
+      for (const p of a.parameters) if (row[p.apiName] !== undefined) params[p.apiName] = row[p.apiName];
+      const r = await api.action(a.apiName, params);
+      if (!r.ok) { setErr(`${a.displayName}：${r.message}`); return; }
+      onDone?.();
+      await run(); // 重跑本 Function：落账后的世界是什么样，当场看见
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="action-panel" style={{ maxWidth: 640 }}>
       <div className="panel-head">
@@ -785,22 +825,40 @@ function FunctionPanel({ schema, name, prefill }: {
         <button className="btn-submit" onClick={run} disabled={busy}>{busy ? '计算中…' : '运行 Function'}</button>
         {err && <span className="result-err">✕ {err}</span>}
       </div>
-      {result !== undefined && <ResultView data={result} />}
+      {result !== undefined && (
+        <ResultView
+          data={result}
+          rowExtra={row => {
+            const acts = rowSystemActions(row);
+            if (acts.length === 0) return null;
+            return acts.map(a => (
+              <button key={a.apiName} className="row-action" disabled={busy} title={a.docs ?? a.displayName} onClick={() => runRowAction(a, row)}>
+                ⚙ {a.displayName}
+              </button>
+            ));
+          }}
+        />
+      )}
     </div>
   );
 }
 
-/** 通用结果展示：对象数组→表格；对象→键值卡；其余→JSON。 */
-function ResultView({ data }: { data: unknown }) {
+/** 通用结果展示：对象数组→表格（可挂行动作列）；对象→键值卡；其余→JSON。 */
+function ResultView({ data, rowExtra }: {
+  data: unknown; rowExtra?: (row: Record<string, Value>) => import('react').ReactNode;
+}) {
   if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
     const rows = data as Record<string, Value>[];
     const cols = Object.keys(rows[0]);
     return (
       <table className="data-table" style={{ marginTop: 14 }}>
-        <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
+        <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}{rowExtra && <th />}</tr></thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i}>{cols.map(c => <td key={c} className={typeof r[c] === 'number' ? 'num' : ''}>{r[c] === null ? '—' : String(r[c])}</td>)}</tr>
+            <tr key={i}>
+              {cols.map(c => <td key={c} className={typeof r[c] === 'number' ? 'num' : ''}>{r[c] === null ? '—' : String(r[c])}</td>)}
+              {rowExtra && <td className="row-action-cell">{rowExtra(r)}</td>}
+            </tr>
           ))}
         </tbody>
       </table>

@@ -52,11 +52,12 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'updateResearchNote',
     displayName: '改研判',
-    docs: '修改已有研判笔记。研判是活文档——观点变了就更新，改动同样过治理管线、留审计。',
+    docs: '修改已有研判笔记的标题/结论/理由——提供哪项就改哪项（至少一项）。研判是活文档，改动同样过治理管线、留审计。',
     parameters: [
       { apiName: 'noteId', displayName: '研判笔记', type: 'string', editor: { kind: 'objectRef', objectType: 'ResearchNote' } },
-      { apiName: 'stance', displayName: '结论', type: 'string', editor: { kind: 'enum', options: [{ value: '看多', label: '看多' }, { value: '看空', label: '看空' }, { value: '中性', label: '中性' }] } },
-      { apiName: 'reason', displayName: '理由', type: 'string' },
+      { apiName: 'title', displayName: '标题', type: 'string', required: false },
+      { apiName: 'stance', displayName: '结论', type: 'string', required: false, editor: { kind: 'enum', options: [{ value: '看多', label: '看多' }, { value: '看空', label: '看空' }, { value: '中性', label: '中性' }] } },
+      { apiName: 'reason', displayName: '理由', type: 'string', required: false },
     ],
     criteria: [
       {
@@ -64,14 +65,24 @@ export const astockActions: ActionTypeDef[] = [
         check: (ctx, p) => ctx.get('ResearchNote', p.noteId as string) !== undefined,
       },
       {
+        apiName: 'atLeastOneField', displayName: '至少改一项', message: '标题/结论/理由至少提供一项',
+        check: (_ctx, p) => [p.title, p.stance, p.reason].some(v => typeof v === 'string' && v.trim().length > 0),
+      },
+      {
         apiName: 'stanceValid', displayName: '结论合法', message: '结论只能是 看多/看空/中性',
-        check: (_ctx, p) => ['看多', '看空', '中性'].includes(p.stance as string),
+        check: (_ctx, p) => p.stance === undefined || p.stance === null || ['看多', '看空', '中性'].includes(p.stance as string),
       },
     ],
-    apply: (_ctx, p): Edit[] => [
-      { kind: 'set', objectType: 'ResearchNote', pk: p.noteId as string, property: 'stance', value: p.stance },
-      { kind: 'set', objectType: 'ResearchNote', pk: p.noteId as string, property: 'reason', value: p.reason },
-    ],
+    apply: (_ctx, p): Edit[] => {
+      const edits: Edit[] = [];
+      const set = (property: string, value: Value): void => {
+        edits.push({ kind: 'set', objectType: 'ResearchNote', pk: p.noteId as string, property, value });
+      };
+      if (typeof p.title === 'string' && p.title.trim()) set('title', p.title.trim());
+      if (typeof p.stance === 'string' && p.stance.trim()) set('stance', p.stance);
+      if (typeof p.reason === 'string' && p.reason.trim()) set('reason', p.reason);
+      return edits;
+    },
   },
   {
     apiName: 'addToWatchlist',
@@ -199,9 +210,10 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'writeResearchNote',
     displayName: '写研判',
-    docs: '对某只股票记录你的投资观点（看多/看空/中性 + 理由），沉淀为可追溯的决策依据。',
+    docs: '对某只股票记录你的投资观点（看多/看空/中性 + 理由），沉淀为可追溯的决策依据。标题可选，便于日后检索。',
     parameters: [
       { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
+      { apiName: 'title', displayName: '标题', type: 'string', required: false },
       { apiName: 'stance', displayName: '结论', type: 'string', editor: { kind: 'enum', options: [{ value: '看多', label: '看多' }, { value: '看空', label: '看空' }, { value: '中性', label: '中性' }] } },
       { apiName: 'reason', displayName: '理由', type: 'string' },
     ],
@@ -217,10 +229,11 @@ export const astockActions: ActionTypeDef[] = [
     ],
     apply: (ctx, p): Edit[] => {
       const id = nextId(ctx, 'ResearchNote', 'RN');
+      const title = typeof p.title === 'string' && p.title.trim() ? p.title.trim() : null;
       return [{
         kind: 'create', objectType: 'ResearchNote', pk: id,
         values: {
-          id, stockCode: p.stockCode as string, stance: p.stance as string,
+          id, title, stockCode: p.stockCode as string, stance: p.stance as string,
           reason: p.reason as string, createdAt: new Date().toISOString(),
         },
       }];
