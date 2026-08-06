@@ -48,4 +48,31 @@ describe('OMS 动能层扩展', () => {
     s.actionTypes = [{ ...base, criteria: [...base.criteria, { ...base.criteria[0] }] }];
     expect(() => loadOntology(s)).toThrowError(/duplicate criterion/);
   });
+
+  it('参数 editor：objectRef/filterExpr 指向未注册类型被拒，enum 空选项被拒', () => {
+    const base = clone().actionTypes![0];
+    const withEditor = (editor: unknown) => {
+      const s = clone();
+      s.actionTypes = [{
+        ...base,
+        parameters: [{ ...base.parameters[0], editor: editor as never }, base.parameters[1]],
+      }];
+      return s;
+    };
+    expect(() => loadOntology(withEditor({ kind: 'objectRef', objectType: 'Ghost' }))).toThrowError(/Ghost/);
+    expect(() => loadOntology(withEditor({ kind: 'filterExpr', objectType: 'Ghost' }))).toThrowError(/Ghost/);
+    expect(() => loadOntology(withEditor({ kind: 'enum', options: [] }))).toThrowError(/enum/);
+    // 合法的通过
+    expect(() => loadOntology(withEditor({ kind: 'objectRef', objectType: 'Keeper' }))).not.toThrow();
+  });
+
+  it('Function 可声明 parameters（含 editor），注册后可取回', () => {
+    const s = clone();
+    s.functions = [{
+      ...s.functions![0],
+      parameters: [{ apiName: 'minWeight', displayName: '最小体重', type: 'number', required: false }],
+    }];
+    const reg = loadOntology(s);
+    expect(reg.functionDef('heaviestAnimal').parameters?.[0].apiName).toBe('minWeight');
+  });
 });

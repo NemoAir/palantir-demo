@@ -7,6 +7,7 @@ export const astockFunctions: FunctionDef[] = [
   {
     apiName: 'portfolioValuation',
     displayName: '组合估值',
+    parameters: [{ apiName: 'portfolioId', displayName: '组合', type: 'string', editor: { kind: 'objectRef', objectType: 'Portfolio' } }],
     logic: (ctx, params) => {
       const pid = params.portfolioId as string;
       const portfolio = ctx.get('Portfolio', pid);
@@ -44,6 +45,7 @@ export const astockFunctions: FunctionDef[] = [
   {
     apiName: 'screenStocks',
     displayName: '条件选股',
+    parameters: [{ apiName: 'where', displayName: '筛选条件', type: 'string', editor: { kind: 'filterExpr', objectType: 'Stock' } }],
     logic: (ctx, params) => {
       // 动态对象集：保存的是条件而非名单——每次求值都在最新数据上重算
       const exprs = String(params.where ?? '').split(',').map(s => s.trim()).filter(Boolean);
@@ -54,6 +56,7 @@ export const astockFunctions: FunctionDef[] = [
   {
     apiName: 'checkAlerts',
     displayName: '预警扫描',
+    parameters: [],
     logic: (ctx) => {
       // 只读扫描：返回条件命中的待命预警；状态写入由调用方经 markAlertTriggered（Action）完成
       const armed = ctx.query('Alert', [{ property: 'status', op: 'eq', value: 'armed' }]);

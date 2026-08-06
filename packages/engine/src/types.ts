@@ -77,12 +77,24 @@ export interface ReadonlyContext {
   query(objectType: string, filters?: Filter[], opts?: QueryOptions): Record<string, Value>[];
 }
 
+/**
+ * 参数编辑器元数据：声明参数"怎么填"，各消费端按此渲染——
+ * UI 渲染下拉/搜索选择器/条件构造器，AI 工具获得枚举与引用说明。
+ */
+export type ParamEditor =
+  | { kind: 'enum'; options: { value: string; label: string }[] }
+  /** 引用某对象类型的实例（按主键）——UI 渲染搜索点选 */
+  | { kind: 'objectRef'; objectType: string }
+  /** 过滤表达式（filter-parse 语法），只能引用该对象类型的注册属性——UI 渲染条件构造器 */
+  | { kind: 'filterExpr'; objectType: string };
+
 export interface ParamDef {
   apiName: string;
   displayName: string;
   type: PropertyType;
   /** 默认必填；显式 false 才可缺省。 */
   required?: boolean;
+  editor?: ParamEditor;
 }
 
 /** 提交前提：全部通过才允许应用 edits；失败时引擎报出 apiName 与 message。 */
@@ -110,6 +122,8 @@ export interface ActionTypeDef {
 export interface FunctionDef {
   apiName: string;
   displayName: string;
+  /** 参数声明（可选）：供 UI 表单与 AI 工具描述使用；运行时传参仍为宽松对象。 */
+  parameters?: ParamDef[];
   logic(ctx: ReadonlyContext, params: Record<string, Value>): unknown;
 }
 

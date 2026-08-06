@@ -46,6 +46,29 @@ describe('ai-tools：本体 → AI 工具（OAG）', () => {
     expect(() => call('nope', {})).toThrowError(/unknown tool/);
   });
 
+  it('enum 参数进 JSON Schema 的 enum 字段（AI 端点选而非瞎猜）', () => {
+    const extended: OntologySchema = {
+      ...zoo,
+      actionTypes: [{
+        apiName: 'setMood', displayName: '设定情绪',
+        parameters: [
+          { apiName: 'tag', displayName: '编号', type: 'string' },
+          {
+            apiName: 'mood', displayName: '情绪', type: 'string',
+            editor: { kind: 'enum', options: [{ value: '开心', label: '开心' }, { value: '低落', label: '低落' }] },
+          },
+        ],
+        criteria: [],
+        apply: (_c, p) => [{ kind: 'set', objectType: 'Animal', pk: p.tag as string, property: 'mood', value: p.mood }],
+      }],
+    };
+    const store2 = new ObjectStore(new Database(':memory:'), loadOntology(extended));
+    store2.init();
+    const { tools } = buildTools(store2);
+    const t = tools.find(x => x.name === 'action_setMood')!;
+    expect((t.inputSchema.properties.mood as { enum?: string[] }).enum).toEqual(['开心', '低落']);
+  });
+
   it('schema 新增 Action → 工具列表自动多一个（元模型驱动）', () => {
     const extended: OntologySchema = {
       ...zoo,

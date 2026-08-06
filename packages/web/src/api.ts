@@ -27,11 +27,17 @@ export interface LinkTypeDef {
   targetToSourceName: string;
 }
 
+export type ParamEditor =
+  | { kind: 'enum'; options: { value: string; label: string }[] }
+  | { kind: 'objectRef'; objectType: string }
+  | { kind: 'filterExpr'; objectType: string };
+
 export interface ParamDef {
   apiName: string;
   displayName: string;
   type: 'string' | 'number' | 'boolean' | 'date';
   required?: boolean;
+  editor?: ParamEditor;
 }
 
 export interface ActionTypeView {
@@ -48,7 +54,7 @@ export interface SchemaView {
   objectTypes: ObjectTypeDef[];
   linkTypes: LinkTypeDef[];
   actionTypes: ActionTypeView[];
-  functions: { apiName: string; displayName: string }[];
+  functions: { apiName: string; displayName: string; parameters: ParamDef[] }[];
 }
 
 export type ActionResult =

@@ -30,7 +30,7 @@ export function createApiServer(store: ObjectStore): http.Server {
       parameters: a.parameters,
       criteria: a.criteria.map(c => ({ apiName: c.apiName, displayName: c.displayName, message: c.message })),
     })),
-    functions: registry.functions().map(f => ({ apiName: f.apiName, displayName: f.displayName })),
+    functions: registry.functions().map(f => ({ apiName: f.apiName, displayName: f.displayName, parameters: f.parameters ?? [] })),
   });
 
   const json = (res: http.ServerResponse, status: number, body: unknown): void => {

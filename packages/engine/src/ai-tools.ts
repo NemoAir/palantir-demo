@@ -17,7 +17,7 @@ export interface ToolDef {
   description: string;
   inputSchema: {
     type: 'object';
-    properties: Record<string, { type: string; description?: string }>;
+    properties: Record<string, { type: string; description?: string; enum?: string[] }>;
     required: string[];
   };
 }
@@ -96,14 +96,29 @@ export function buildTools(store: ObjectStore): {
     },
   ];
 
-  // 每个 Action → 一个工具（写路径，照走完整治理管线）
-  for (const a of registry.actionTypes()) {
+  /** ParamDef[] → JSON Schema（editor 元数据转成 enum 约束与引用说明）。 */
+  const paramsToSchema = (params: readonly import('./types.js').ParamDef[]): { properties: ToolDef['inputSchema']['properties']; required: string[] } => {
     const properties: ToolDef['inputSchema']['properties'] = {};
     const required: string[] = [];
-    for (const p of a.parameters) {
-      properties[p.apiName] = { type: JSON_TYPE[p.type], description: p.displayName };
+    for (const p of params) {
+      let description = p.displayName;
+      let enumValues: string[] | undefined;
+      if (p.editor?.kind === 'enum') {
+        enumValues = p.editor.options.map(o => o.value);
+      } else if (p.editor?.kind === 'objectRef') {
+        description += `（${p.editor.objectType} 对象的主键，可先用 query_objects 查找）`;
+      } else if (p.editor?.kind === 'filterExpr') {
+        description += `（过滤表达式，只能引用 ${p.editor.objectType} 的注册属性，如 "latestPrice<100"）`;
+      }
+      properties[p.apiName] = { type: JSON_TYPE[p.type], description, ...(enumValues ? { enum: enumValues } : {}) };
       if (p.required !== false) required.push(p.apiName);
     }
+    return { properties, required };
+  };
+
+  // 每个 Action → 一个工具（写路径，照走完整治理管线）
+  for (const a of registry.actionTypes()) {
+    const { properties, required } = paramsToSchema(a.parameters);
     const criteriaDesc = a.criteria.map(c => c.displayName).join('、');
     tools.push({
       name: `action_${a.apiName}`,
@@ -112,12 +127,13 @@ export function buildTools(store: ObjectStore): {
     });
   }
 
-  // 每个 Function → 一个工具（只读逻辑）
+  // 每个 Function → 一个工具（只读逻辑；有参数声明则给出精确 schema）
   for (const f of registry.functions()) {
+    const { properties, required } = paramsToSchema(f.parameters ?? []);
     tools.push({
       name: `fn_${f.apiName}`,
-      description: `调用本体函数「${f.displayName}」（只读计算）。参数以对象传入。`,
-      inputSchema: { type: 'object', properties: {}, required: [] },
+      description: `调用本体函数「${f.displayName}」（只读计算）。`,
+      inputSchema: { type: 'object', properties, required },
     });
   }
 

@@ -21,7 +21,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'addToWatchlist',
     displayName: '加自选',
-    parameters: [{ apiName: 'stockCode', displayName: '股票代码', type: 'string' }],
+    parameters: [{ apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } }],
     criteria: [
       {
         apiName: 'stockExists', displayName: '股票存在', message: '找不到该股票',
@@ -46,9 +46,9 @@ export const astockActions: ActionTypeDef[] = [
     apiName: 'tradeStock',
     displayName: '模拟调仓',
     parameters: [
-      { apiName: 'portfolioId', displayName: '组合', type: 'string' },
-      { apiName: 'stockCode', displayName: '股票代码', type: 'string' },
-      { apiName: 'side', displayName: '方向(buy/sell)', type: 'string' },
+      { apiName: 'portfolioId', displayName: '组合', type: 'string', editor: { kind: 'objectRef', objectType: 'Portfolio' } },
+      { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
+      { apiName: 'side', displayName: '方向', type: 'string', editor: { kind: 'enum', options: [{ value: 'buy', label: '买入' }, { value: 'sell', label: '卖出' }] } },
       { apiName: 'quantity', displayName: '数量(股)', type: 'number' },
       { apiName: 'price', displayName: '成交价', type: 'number' },
     ],
@@ -134,8 +134,8 @@ export const astockActions: ActionTypeDef[] = [
     apiName: 'writeResearchNote',
     displayName: '写研判',
     parameters: [
-      { apiName: 'stockCode', displayName: '股票代码', type: 'string' },
-      { apiName: 'stance', displayName: '结论', type: 'string' },
+      { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
+      { apiName: 'stance', displayName: '结论', type: 'string', editor: { kind: 'enum', options: [{ value: '看多', label: '看多' }, { value: '看空', label: '看空' }, { value: '中性', label: '中性' }] } },
       { apiName: 'reason', displayName: '理由', type: 'string' },
     ],
     criteria: [
@@ -163,8 +163,8 @@ export const astockActions: ActionTypeDef[] = [
     apiName: 'setAlert',
     displayName: '设预警',
     parameters: [
-      { apiName: 'stockCode', displayName: '股票代码', type: 'string' },
-      { apiName: 'condition', displayName: '条件表达式', type: 'string' },
+      { apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } },
+      { apiName: 'condition', displayName: '触发条件', type: 'string', editor: { kind: 'filterExpr', objectType: 'Stock' } },
     ],
     criteria: [
       {
@@ -197,7 +197,7 @@ export const astockActions: ActionTypeDef[] = [
   {
     apiName: 'resolveAlert',
     displayName: '处理预警',
-    parameters: [{ apiName: 'alertId', displayName: '预警ID', type: 'string' }],
+    parameters: [{ apiName: 'alertId', displayName: '预警', type: 'string', editor: { kind: 'objectRef', objectType: 'Alert' } }],
     criteria: [
       {
         apiName: 'alertExists', displayName: '预警存在', message: '找不到该预警',
@@ -219,7 +219,7 @@ export const astockActions: ActionTypeDef[] = [
     apiName: 'markAlertTriggered',
     displayName: '标记预警触发',
     system: true,
-    parameters: [{ apiName: 'alertId', displayName: '预警ID', type: 'string' }],
+    parameters: [{ apiName: 'alertId', displayName: '预警', type: 'string', editor: { kind: 'objectRef', objectType: 'Alert' } }],
     criteria: [
       {
         apiName: 'alertExists', displayName: '预警存在', message: '找不到该预警',

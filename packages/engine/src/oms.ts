@@ -75,6 +75,20 @@ function assertApiName(path: string, value: string): void {
     throw new OntologyValidationError(path, `invalid apiName '${value}' (must match ${API_NAME_RE})`);
 }
 
+function assertEditor(
+  path: string,
+  editor: import('./types.js').ParamEditor | undefined,
+  typeMap: Map<string, ObjectTypeDef>,
+): void {
+  if (!editor) return;
+  if (editor.kind === 'enum') {
+    if (!editor.options || editor.options.length === 0)
+      throw new OntologyValidationError(path, `enum editor requires non-empty options`);
+  } else if (!typeMap.has(editor.objectType)) {
+    throw new OntologyValidationError(path, `editor references unknown object type '${editor.objectType}'`);
+  }
+}
+
 export function loadOntology(schema: OntologySchema): OntologyRegistry {
   assertApiName('apiName', schema.apiName);
 
@@ -140,10 +154,12 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
 
     const seenParams = new Set<string>();
     for (const p of a.parameters) {
-      assertApiName(`${base}.parameters.${p.apiName}`, p.apiName);
+      const ppath = `${base}.parameters.${p.apiName}`;
+      assertApiName(ppath, p.apiName);
       if (seenParams.has(p.apiName))
-        throw new OntologyValidationError(`${base}.parameters.${p.apiName}`, `duplicate parameter '${p.apiName}'`);
+        throw new OntologyValidationError(ppath, `duplicate parameter '${p.apiName}'`);
       seenParams.add(p.apiName);
+      assertEditor(ppath, p.editor, typeMap);
     }
 
     const seenCriteria = new Set<string>();
@@ -162,6 +178,11 @@ export function loadOntology(schema: OntologySchema): OntologyRegistry {
     if (seenFns.has(f.apiName))
       throw new OntologyValidationError(base, `duplicate function '${f.apiName}'`);
     seenFns.add(f.apiName);
+    for (const p of f.parameters ?? []) {
+      const ppath = `${base}.parameters.${p.apiName}`;
+      assertApiName(ppath, p.apiName);
+      assertEditor(ppath, p.editor, typeMap);
+    }
   }
 
   // 同一对象类型上的遍历名必须唯一（一个类型挂多条链接时，出/入遍历名不得撞名）

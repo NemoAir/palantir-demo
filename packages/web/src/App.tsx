@@ -8,7 +8,17 @@ import {
 type View =
   | { kind: 'list'; type: string }
   | { kind: 'detail'; type: string; pk: Value }
-  | { kind: 'action'; name: string; prefill?: Record<string, Value> };
+  | { kind: 'action'; name: string; prefill?: Record<string, Value> }
+  | { kind: 'fn'; name: string; prefill?: Record<string, Value> };
+
+/** 运算符按属性类型收窄（列表过滤与条件构造器共用）。 */
+const OPS_BY_TYPE: Record<string, string[]> = {
+  string: ['~', '=', '!=', '=null', '!=null'],
+  date: ['<', '<=', '>', '>=', '=', '!=', '=null', '!=null'],
+  number: ['<', '<=', '>', '>=', '=', '!=', '=null', '!=null'],
+  boolean: ['=', '!=', '=null', '!=null'],
+};
+const OP_LABEL = (o: string): string => (o === '~' ? '~ 包含' : o === '=null' ? '为空' : o === '!=null' ? '非空' : o);
 
 /* ---------- 工具 ---------- */
 const fmt = (v: Value): string => {
@@ -92,7 +102,7 @@ export function App() {
           {schema.objectTypes.map(ot => (
             <button
               key={ot.apiName}
-              className={`nav-item ${view.kind !== 'action' && view.type === ot.apiName ? 'active' : ''}`}
+              className={`nav-item ${(view.kind === 'list' || view.kind === 'detail') && view.type === ot.apiName ? 'active' : ''}`}
               onClick={() => setView({ kind: 'list', type: ot.apiName })}
             >
               <span className="dot dot-semantic" />{ot.displayName}
@@ -107,6 +117,16 @@ export function App() {
               onClick={() => setView({ kind: 'action', name: a.apiName })}
             >
               <span className="dot dot-kinetic" />{a.displayName}
+            </button>
+          ))}
+          <div className="group-label" style={{ marginTop: 14 }} title="Function：本体原生只读逻辑（算不做，写入必须经 Action）——动能元素的另一半">动能层 · Function</div>
+          {schema.functions.map(f => (
+            <button
+              key={f.apiName}
+              className={`nav-item kinetic ${view.kind === 'fn' && view.name === f.apiName ? 'active' : ''}`}
+              onClick={() => setView({ kind: 'fn', name: f.apiName })}
+            >
+              <span className="dot dot-kinetic" style={{ borderRadius: 2 }} />{f.displayName}
             </button>
           ))}
           <details className="system-group">
@@ -156,6 +176,9 @@ export function App() {
               onDone={onActionDone}
             />
           )}
+          {view.kind === 'fn' && (
+            <FunctionPanel key={view.name} schema={schema} name={view.name} prefill={view.prefill} />
+          )}
         </main>
 
         <AuditRail refreshSignal={auditKey} schema={schema} />
@@ -179,13 +202,6 @@ function ObjectList({ schema, type, onOpen }: {
   const [fOp, setFOp] = useState('<');
   const [fVal, setFVal] = useState('');
 
-  // 运算符按属性类型收窄：文本给包含/等值，数字日期给比较，布尔给等值
-  const OPS_BY_TYPE: Record<string, string[]> = {
-    string: ['~', '=', '!=', '=null', '!=null'],
-    date: ['<', '<=', '>', '>=', '=', '!=', '=null', '!=null'],
-    number: ['<', '<=', '>', '>=', '=', '!=', '=null', '!=null'],
-    boolean: ['=', '!=', '=null', '!=null'],
-  };
   const fPropType = ot.properties.find(p => p.apiName === fProp)?.type ?? 'string';
   const ops = OPS_BY_TYPE[fPropType];
   const changeProp = (name: string) => {
@@ -219,7 +235,7 @@ function ObjectList({ schema, type, onOpen }: {
           {ot.properties.map(p => <option key={p.apiName} value={p.apiName}>{p.displayName}</option>)}
         </select>
         <select value={fOp} onChange={e => setFOp(e.target.value)}>
-          {ops.map(o => <option key={o} value={o}>{o === '~' ? '~ 包含' : o === '=null' ? '为空' : o === '!=null' ? '非空' : o}</option>)}
+          {ops.map(o => <option key={o} value={o}>{OP_LABEL(o)}</option>)}
         </select>
         {fOp !== '=null' && fOp !== '!=null' && (
           <input value={fVal} onChange={e => setFVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && addFilter()} placeholder="值" />
@@ -429,20 +445,13 @@ function ActionPanel({ schema, name, prefill, onDone }: {
       </div>
       <div className="subtitle">Action Type——受治理的写操作：参数校验 → 提交前提 → 原子提交 → 审计</div>
       {action.parameters.map(p => (
-        <div className="form-field" key={p.apiName}>
-          <label>{p.displayName}{p.required === false ? '（可选）' : ''} <span style={{ fontFamily: 'var(--mono)', opacity: 0.6 }}>{p.apiName}: {p.type}</span></label>
-          {p.type === 'boolean' ? (
-            <select value={values[p.apiName]} onChange={e => setValues(v => ({ ...v, [p.apiName]: e.target.value }))}>
-              <option value="">—</option><option value="true">true</option><option value="false">false</option>
-            </select>
-          ) : (
-            <input
-              type={p.type === 'number' ? 'number' : 'text'}
-              value={values[p.apiName]}
-              onChange={e => setValues(v => ({ ...v, [p.apiName]: e.target.value }))}
-            />
-          )}
-        </div>
+        <ParamField
+          key={p.apiName}
+          schema={schema}
+          param={p}
+          value={values[p.apiName]}
+          onChange={val => setValues(v => ({ ...v, [p.apiName]: val }))}
+        />
       ))}
       <div className="criteria-list">
         <div className="head">提交前提（Submission Criteria）——不满足即拒绝</div>
@@ -464,6 +473,219 @@ function ActionPanel({ schema, name, prefill, onDone }: {
       )}
     </div>
   );
+}
+
+/* ---------- 参数渲染器：editor 元数据 → 下拉 / 对象搜索点选 / 条件构造器 ---------- */
+function ParamField({ schema, param, value, onChange }: {
+  schema: SchemaView; param: import('./api').ParamDef; value: string; onChange: (v: string) => void;
+}) {
+  const label = (
+    <label>
+      {param.displayName}{param.required === false ? '（可选）' : ''}{' '}
+      <span style={{ fontFamily: 'var(--mono)', opacity: 0.6 }}>{param.apiName}: {param.type}</span>
+    </label>
+  );
+  const e = param.editor;
+  return (
+    <div className="form-field">
+      {label}
+      {e?.kind === 'enum' ? (
+        <select value={value} onChange={ev => onChange(ev.target.value)}>
+          <option value="">— 请选择 —</option>
+          {e.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      ) : e?.kind === 'objectRef' ? (
+        <ObjectRefPicker schema={schema} objectType={e.objectType} value={value} onChange={onChange} />
+      ) : e?.kind === 'filterExpr' ? (
+        <FilterExprBuilder schema={schema} objectType={e.objectType} value={value} onChange={onChange} />
+      ) : param.type === 'boolean' ? (
+        <select value={value} onChange={ev => onChange(ev.target.value)}>
+          <option value="">—</option><option value="true">true</option><option value="false">false</option>
+        </select>
+      ) : (
+        <input type={param.type === 'number' ? 'number' : 'text'} value={value} onChange={ev => onChange(ev.target.value)} />
+      )}
+    </div>
+  );
+}
+
+/** 对象引用选择器：输入代码/名称模糊过滤，点选候选（值=主键）。 */
+function ObjectRefPicker({ schema, objectType, value, onChange }: {
+  schema: SchemaView; objectType: string; value: string; onChange: (v: string) => void;
+}) {
+  const ot = schema.objectTypes.find(o => o.apiName === objectType)!;
+  const [all, setAll] = useState<ObjectRow[] | null>(null);
+  const [text, setText] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const rowLabel = useCallback((r: ObjectRow) => {
+    const pk = String(r[ot.primaryKey]);
+    const name = r.name !== undefined && r.name !== null ? String(r.name) : '';
+    return name && name !== pk ? `${name}（${pk}）` : pk;
+  }, [ot.primaryKey]);
+
+  useEffect(() => {
+    api.objects(objectType, { limit: 500 }).then(rows => {
+      setAll(rows);
+      // 预填值回显为可读标签
+      if (value && !text) {
+        const hit = rows.find(r => String(r[ot.primaryKey]) === String(value));
+        if (hit) setText(rowLabel(hit));
+      }
+    }).catch(() => setAll([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objectType]);
+
+  const q = text.trim().toLowerCase();
+  const selectedLabel = value ? (all ?? []).find(r => String(r[ot.primaryKey]) === String(value)) : undefined;
+  const candidates = (all ?? [])
+    .filter(r => {
+      if (!q || (selectedLabel && text === rowLabel(selectedLabel))) return true;
+      return String(r[ot.primaryKey]).toLowerCase().includes(q) || String(r.name ?? '').toLowerCase().includes(q);
+    })
+    .slice(0, 8);
+
+  return (
+    <div className="ref-picker">
+      <input
+        value={text}
+        placeholder={`输入${ot.displayName}代码或名称点选`}
+        onFocus={() => setOpen(true)}
+        onChange={ev => { setText(ev.target.value); setOpen(true); onChange(''); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {open && candidates.length > 0 && (
+        <div className="ref-dropdown">
+          {candidates.map(r => {
+            const pk = String(r[ot.primaryKey]);
+            return (
+              <button key={pk} onMouseDown={() => { onChange(pk); setText(rowLabel(r)); setOpen(false); }}>
+                {rowLabel(r)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {value && <div className="ref-selected">已选：{value}</div>}
+    </div>
+  );
+}
+
+/** 条件构造器：属性/运算符/值三段点选拼出表达式——"条件只能引用本体里存在的东西"的界面化。 */
+function FilterExprBuilder({ schema, objectType, value, onChange }: {
+  schema: SchemaView; objectType: string; value: string; onChange: (v: string) => void;
+}) {
+  const ot = schema.objectTypes.find(o => o.apiName === objectType)!;
+  const [prop, setProp] = useState(ot.properties.find(p => p.type === 'number')?.apiName ?? ot.properties[0].apiName);
+  const propType = ot.properties.find(p => p.apiName === prop)?.type ?? 'string';
+  const ops = OPS_BY_TYPE[propType];
+  const [op, setOp] = useState(ops[0]);
+  const [val, setVal] = useState('');
+
+  const emit = (np: string, no: string, nv: string) => {
+    if (no === '=null' || no === '!=null') onChange(`${np}${no.replace('null', '')}null`);
+    else if (nv.trim() !== '') onChange(`${np}${no}${nv.trim()}`);
+    else onChange('');
+  };
+
+  return (
+    <div className="expr-builder">
+      <div className="expr-row">
+        <select value={prop} onChange={ev => {
+          const np = ev.target.value;
+          setProp(np);
+          const t = ot.properties.find(p => p.apiName === np)?.type ?? 'string';
+          const no = OPS_BY_TYPE[t].includes(op) ? op : OPS_BY_TYPE[t][0];
+          setOp(no);
+          emit(np, no, val);
+        }}>
+          {ot.properties.map(p => <option key={p.apiName} value={p.apiName}>{p.displayName}</option>)}
+        </select>
+        <select value={op} onChange={ev => { setOp(ev.target.value); emit(prop, ev.target.value, val); }}>
+          {ops.map(o => <option key={o} value={o}>{OP_LABEL(o)}</option>)}
+        </select>
+        {op !== '=null' && op !== '!=null' && (
+          <input
+            type={propType === 'number' ? 'number' : 'text'}
+            value={val}
+            placeholder="值"
+            onChange={ev => { setVal(ev.target.value); emit(prop, op, ev.target.value); }}
+          />
+        )}
+      </div>
+      <div className="expr-preview">{value ? <>表达式：<code>{value}</code></> : '选择属性与条件后自动生成表达式'}</div>
+    </div>
+  );
+}
+
+/* ---------- Function 运行面板 ---------- */
+function FunctionPanel({ schema, name, prefill }: {
+  schema: SchemaView; name: string; prefill?: Record<string, Value>;
+}) {
+  const fn = schema.functions.find(f => f.apiName === name)!;
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const p of fn.parameters) init[p.apiName] = prefill?.[p.apiName] !== undefined ? String(prefill[p.apiName]) : '';
+    return init;
+  });
+  const [result, setResult] = useState<unknown>(undefined);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    setBusy(true); setErr(null);
+    const params: Record<string, Value> = {};
+    for (const p of fn.parameters) {
+      const raw = values[p.apiName];
+      if (raw === '') continue;
+      params[p.apiName] = p.type === 'number' ? Number(raw) : raw;
+    }
+    try {
+      setResult(await api.fn(name, params));
+    } catch (e) {
+      setErr((e as Error).message); setResult(undefined);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="action-panel" style={{ maxWidth: 640 }}>
+      <div className="panel-head">
+        <h2>{fn.displayName}</h2>
+        <span className="api-name">fn: {fn.apiName}</span>
+      </div>
+      <div className="subtitle">Function——本体原生只读逻辑（算不做；要落地写入需经 Action）</div>
+      {fn.parameters.map(p => (
+        <ParamField key={p.apiName} schema={schema} param={p} value={values[p.apiName]} onChange={v => setValues(s => ({ ...s, [p.apiName]: v }))} />
+      ))}
+      <div className="submit-row">
+        <button className="btn-submit" onClick={run} disabled={busy}>{busy ? '计算中…' : '运行 Function'}</button>
+        {err && <span className="result-err">✕ {err}</span>}
+      </div>
+      {result !== undefined && <ResultView data={result} />}
+    </div>
+  );
+}
+
+/** 通用结果展示：对象数组→表格；对象→键值卡；其余→JSON。 */
+function ResultView({ data }: { data: unknown }) {
+  if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+    const rows = data as Record<string, Value>[];
+    const cols = Object.keys(rows[0]);
+    return (
+      <table className="data-table" style={{ marginTop: 14 }}>
+        <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>{cols.map(c => <td key={c} className={typeof r[c] === 'number' ? 'num' : ''}>{r[c] === null ? '—' : String(r[c])}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+  if (Array.isArray(data) && data.length === 0) return <div className="empty">（空结果）</div>;
+  return <pre className="result-json">{JSON.stringify(data, null, 2)}</pre>;
 }
 
 /* ---------- 右栏：审计流 + 通知 ---------- */
