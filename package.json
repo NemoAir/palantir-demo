@@ -7,6 +7,11 @@
     "cli": "pnpm --filter engine cli"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.115.0"
   }
 }

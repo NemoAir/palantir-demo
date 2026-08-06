@@ -1,7 +1,7 @@
 # PROGRESS — palantir-demo（Palantir 本体论学习与实战）
 
 ## 当前焦点
-🏁 M1–M5 全部完成（2026-08-05 凌晨，连续执行模式）。总验收汇总：`docs/acceptance/summary.md`。待用户抽查：①UI 观感（pnpm --filter engine serve + pnpm --filter web dev → :5177）②重启 Claude Code 会话实连 astock-ontology MCP 完成对话式演示。下一步（可选）：远期项见 spec §6（Interface 多态/scenario/权限）。
+🏁 M1–M5 完成 + 用户反馈迭代批 A–E 完成（2026-08-06）。批A 导航历史/审计可读化/系统Action折叠/估值卡/运算符收窄；批B 元模型 editor（enum/objectRef/filterExpr 三类参数编辑器，一处声明三端受益）+ Function 面板；批C 新动词 createPortfolio/updateResearchNote（元模型威力实证）；批D 通知可点击+重物化按钮；批E examples/api-agent.ts（Claude API tool-use runloop，编译验证过、未实跑——运行需 API 凭据）。MCP 实连已验收（用户会话直连查询/估值成功）。71+ 测试全绿。
 
 ## 全景任务清单
 - ✅ ① 调研 Palantir Ontology（139 论断 → 25 条对抗验证 75 票 0 反对 → 9 组 high 置信发现；骨架页亲验；报告 `docs/ontology-research.md`）

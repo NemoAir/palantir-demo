@@ -10,6 +10,7 @@
     "generate-osdk.ts",
     "serve.ts",
     "../../ontology/**/*",
-    "../../osdk/**/*"
+    "../../osdk/**/*",
+    "../../examples/**/*"
   ]
 }
