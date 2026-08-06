@@ -5,12 +5,13 @@
   <key>Label</key>
   <string>com.nemoair.astock-patrol</string>
 
-  <!-- bash -lc：login shell 才能拿到用户 PATH（pnpm / claude 都在里面） -->
+  <!-- bash -lc：login shell 才能拿到用户 PATH（pnpm / claude 都在里面）。
+       使用前把下面的 /ABSOLUTE/PATH/TO/palantir-demo 替换为你本机的仓库路径。 -->
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
     <string>-lc</string>
-    <string>/Users/nemo/Documents/Projects/NemoAir/palantir-demo/examples/daily-patrol.sh &gt;&gt; "$HOME/Library/Logs/astock-patrol.log" 2&gt;&amp;1</string>
+    <string>/ABSOLUTE/PATH/TO/palantir-demo/examples/daily-patrol.sh &gt;&gt; "$HOME/Library/Logs/astock-patrol.log" 2&gt;&amp;1</string>
   </array>
 
   <!-- 每个交易日（周一~周五）15:35 收盘后触发 -->

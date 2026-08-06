@@ -35,7 +35,7 @@
 
 ## 未决 / 坑
 - 【回滚记录】2026-08-04 用户指令：reset --hard 068ac98 + git clean（丢弃 545c57b..c156339 共 11 个实施 commit，reflog 可恢复）；CLAUDE.md 按原内容重建并补问财备用数据源条款。
-- 问财 OpenAPI 备用数据源：key 在 `claude-config/secrets/investment-research.env`（IWENCAI_BASE_URL/IWENCAI_API_KEY），经环境变量用、永不入库。
+- 问财 OpenAPI 备用数据源：key 存于本机私有配置（仓库外），经环境变量（IWENCAI_BASE_URL/IWENCAI_API_KEY）使用、永不入库。
 - 【环境坑】macOS TCC：Claude.app（com.anthropic.claudefordesktop）对"文稿文件夹"的授权在应用重启后曾丢失（整个 ~/Documents EPERM）→ 修复：系统设置开完全磁盘访问 / `tccutil reset SystemPolicyDocumentsFolder com.anthropic.claudefordesktop` 后重授权。再遇 EPERM 先查这里。
 - 数据拉取依赖会话内金融技能（hithink/mx 系列）：仅 Claude 会话可调，产出落 `datasets/*.csv`；引擎侧不做任何网络拉数。
 

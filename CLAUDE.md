@@ -21,7 +21,7 @@
 3. **脏数据不静默丢弃**：Funnel 对缺主键/坏值必须产出 `skipped`/`nulled` 报告；科创板未盈利企业 PE 空值是真实数据，如实置空、不造数。
 4. **TDD**：先写失败测试→确认失败→最小实现→确认通过→commit；实现计划中的测试是行为契约，不得为凑通过改测试。
 5. **验收流程**（spec §9.1）：自动化测试全绿 → 逐项人工验收附证据（`docs/acceptance/`）→ 用户抽查 → 才在 PROGRESS 标 ✅。
-6. **数据接入边界**：真实数据只由 Claude 会话拉取、落 `datasets/*.csv`——渠道：本机金融技能（hithink/mx 系列）为主，问财 OpenAPI 为备（`IWENCAI_BASE_URL`/`IWENCAI_API_KEY` 见 `~/Documents/Projects/NemoAir/claude-config/secrets/investment-research.env`，经环境变量使用、**key 永不写入本仓库**）；引擎代码不做任何网络请求。
+6. **数据接入边界**：真实数据只由 Claude 会话拉取、落 `datasets/*.csv`——渠道：本机金融技能（hithink/mx 系列）为主，问财 OpenAPI 为备（`IWENCAI_BASE_URL`/`IWENCAI_API_KEY` 由本机私有环境文件提供、不在本仓库，经环境变量使用、**key 永不写入本仓库**）；引擎代码不做任何网络请求。
 
 ## 常用命令
 
