@@ -19,6 +19,55 @@ const conditionHits = (ctx: ReadonlyContext, condition: string, stockCode: strin
 
 export const astockActions: ActionTypeDef[] = [
   {
+    apiName: 'createPortfolio',
+    displayName: '新建组合',
+    parameters: [
+      { apiName: 'name', displayName: '组合名称', type: 'string' },
+      { apiName: 'initialCash', displayName: '初始资金', type: 'number' },
+    ],
+    criteria: [
+      {
+        apiName: 'nameNotEmpty', displayName: '名称非空', message: '组合名称不能为空',
+        check: (_ctx, p) => String(p.name ?? '').trim().length > 0,
+      },
+      {
+        apiName: 'cashPositive', displayName: '资金为正', message: '初始资金必须大于 0',
+        check: (_ctx, p) => (p.initialCash as number) > 0,
+      },
+    ],
+    apply: (ctx, p): Edit[] => {
+      const id = `P${ctx.query('Portfolio').length + 1}`;
+      return [{
+        kind: 'create', objectType: 'Portfolio', pk: id,
+        values: { id, name: String(p.name).trim(), initialCash: p.initialCash, cash: p.initialCash },
+      }];
+    },
+    sideEffects: (_ctx, p) => [{ kind: 'notification', message: `已新建组合「${String(p.name).trim()}」` }],
+  },
+  {
+    apiName: 'updateResearchNote',
+    displayName: '改研判',
+    parameters: [
+      { apiName: 'noteId', displayName: '研判笔记', type: 'string', editor: { kind: 'objectRef', objectType: 'ResearchNote' } },
+      { apiName: 'stance', displayName: '结论', type: 'string', editor: { kind: 'enum', options: [{ value: '看多', label: '看多' }, { value: '看空', label: '看空' }, { value: '中性', label: '中性' }] } },
+      { apiName: 'reason', displayName: '理由', type: 'string' },
+    ],
+    criteria: [
+      {
+        apiName: 'noteExists', displayName: '笔记存在', message: '找不到该研判笔记',
+        check: (ctx, p) => ctx.get('ResearchNote', p.noteId as string) !== undefined,
+      },
+      {
+        apiName: 'stanceValid', displayName: '结论合法', message: '结论只能是 看多/看空/中性',
+        check: (_ctx, p) => ['看多', '看空', '中性'].includes(p.stance as string),
+      },
+    ],
+    apply: (_ctx, p): Edit[] => [
+      { kind: 'set', objectType: 'ResearchNote', pk: p.noteId as string, property: 'stance', value: p.stance },
+      { kind: 'set', objectType: 'ResearchNote', pk: p.noteId as string, property: 'reason', value: p.reason },
+    ],
+  },
+  {
     apiName: 'addToWatchlist',
     displayName: '加自选',
     parameters: [{ apiName: 'stockCode', displayName: '股票', type: 'string', editor: { kind: 'objectRef', objectType: 'Stock' } }],

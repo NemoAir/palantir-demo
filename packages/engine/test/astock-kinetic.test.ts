@@ -128,6 +128,30 @@ describe('astock 动能层（6 Action + 3 Function）', () => {
     expect(v.positions[0].stockCode).toBe('688981');
   });
 
+  it('createPortfolio：新建组合（cash=initialCash），空名/非正资金拒绝', () => {
+    const r = actions.execute('createPortfolio', { name: '打新组合', initialCash: 500000 });
+    expect(r.ok).toBe(true);
+    const p2 = store.get('Portfolio', 'P2')!;
+    expect(p2.name).toBe('打新组合');
+    expect(p2.cash).toBe(500000);
+    expect(actions.execute('createPortfolio', { name: '  ', initialCash: 1 }))
+      .toMatchObject({ ok: false, failedCriterion: 'nameNotEmpty' });
+    expect(actions.execute('createPortfolio', { name: 'x', initialCash: 0 }))
+      .toMatchObject({ ok: false, failedCriterion: 'cashPositive' });
+  });
+
+  it('updateResearchNote：修改结论与理由（留审计）', () => {
+    actions.execute('writeResearchNote', { stockCode: '688981', stance: '看多', reason: '初判' });
+    const r = actions.execute('updateResearchNote', { noteId: 'RN-1', stance: '中性', reason: '估值已到位' });
+    expect(r.ok).toBe(true);
+    const note = store.get('ResearchNote', 'RN-1')!;
+    expect(note.stance).toBe('中性');
+    expect(note.reason).toBe('估值已到位');
+    expect(store.listAudit(5)[0].action).toBe('updateResearchNote');
+    expect(actions.execute('updateResearchNote', { noteId: 'GHOST', stance: '看多', reason: 'x' }))
+      .toMatchObject({ ok: false, failedCriterion: 'noteExists' });
+  });
+
   it('screenStocks 与直接 query 等价', () => {
     const byFn = fns.call('screenStocks', { where: 'pe<100' }) as { code: string }[];
     const direct = oss.query('Stock', [{ property: 'pe', op: 'lt', value: 100 }]);
