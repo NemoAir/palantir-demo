@@ -50,6 +50,7 @@ export class ObjectStore {
   init(): void {
     for (const ot of this.registry.objectTypes()) {
       this.db.exec(this.ddlFor(ot));
+      this.migrateTable(ot);
     }
     for (const link of this.registry.linkTypes()) {
       this.db.exec(
@@ -204,6 +205,25 @@ export class ObjectStore {
     this.db
       .prepare(`INSERT INTO obj_${ot.apiName} (${propNames.join(', ')}) VALUES (${propNames.map(n => `@${n}`).join(', ')})`)
       .run(bound);
+  }
+
+  /**
+   * 本体演进的轻量迁移：schema 新增的 nullable 属性自动 ALTER 补列（现存行取值 NULL）。
+   * 纯编辑型对象没有重物化兜底，全靠这里。非空新列无法安全补默认值（不造数），
+   * 指名报错，让调用方走回填/重建流程。标识符均来自已过 OMS 防线的注册元数据。
+   */
+  private migrateTable(ot: ObjectTypeDef): void {
+    const existing = new Set(
+      (this.db.prepare(`PRAGMA table_info(obj_${ot.apiName})`).all() as { name: string }[]).map(c => c.name),
+    );
+    for (const p of ot.properties) {
+      if (existing.has(p.apiName)) continue;
+      if (p.apiName === ot.primaryKey || !p.nullable)
+        throw new Error(
+          `cannot auto-migrate: new property '${p.apiName}' on '${ot.apiName}' is NOT NULL (backfill/rebuild required)`,
+        );
+      this.db.exec(`ALTER TABLE obj_${ot.apiName} ADD COLUMN ${p.apiName} ${SQL_TYPE[p.type]}`);
+    }
   }
 
   private ddlFor(ot: ObjectTypeDef): string {
