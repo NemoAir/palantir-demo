@@ -16,6 +16,7 @@
 - ✅ ⑩ 迭代批 A–E（第一轮反馈 11+10 条）：UI 修正/editor 元模型/新动词/通知与重物化/api-agent 示例——git 0ee700a..1d6f3b8
 - ✅ ⑪ 迭代批 F–I（第二轮反馈 15 条）：概念自解释/引用可读化（titleProperty 等四元数据）/本体演进+自动迁移/活系统 claude -p 实跑——`docs/acceptance/iter-fghi-evidence.md`
 - ✅ ⑫ 迭代批 J–O（第三轮反馈 9 条）：血缘分段动画/决策活动页(分页)/概念页+数据流图/引用预览卡/Function 结果友好化/Web AI 对话入口(双驱动桥实测)/根 README——`docs/acceptance/iter-jko-evidence.md`
+- ✅ ⑬ 迭代批 P–Q（第四轮反馈 3 条）：Function 结果中文化(resultLabels 三级回退)/chat 桥收紧为纯操作员(disableAllHooks+disallowedTools+strict-mcp，修用户抓到的'子会话继承开发环境'缺陷)/多轮对话(conversationId 实测代词记忆)——evidence 同文件补录
 
 ## 关键决策与依据（全记录见 spec §2）
 - 技术栈：TypeScript 全栈（Node 引擎 + React UI + SQLite）——用户为 iOS 开发者，TS 与 Swift 类型系统同构；与 OSDK 官方语言一致。
