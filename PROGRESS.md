@@ -39,6 +39,9 @@
 - 【环境坑】macOS TCC：Claude.app（com.anthropic.claudefordesktop）对"文稿文件夹"的授权在应用重启后曾丢失（整个 ~/Documents EPERM）→ 修复：系统设置开完全磁盘访问 / `tccutil reset SystemPolicyDocumentsFolder com.anthropic.claudefordesktop` 后重授权。再遇 EPERM 先查这里。
 - 数据拉取依赖会话内金融技能（hithink/mx 系列）：仅 Claude 会话可调，产出落 `datasets/*.csv`；引擎侧不做任何网络拉数。
 
+## 发布状态
+- 🌐 已发布 public：https://github.com/NemoAir/palantir-demo（2026-08-06，main 为默认分支）。发布前完成：全历史密钥扫描、敏感路径泛化、干净目录 clone 全链路实测、.env.example 配置约定。
+
 ## 下一步 / 游标
 1. 用户体验批 F–I 成果（刷新 :5177；看概念地图/预警列表可读化/调仓最新价提示/预警扫描一键落账）
 2. 用户可选亲手激活：`./examples/daily-patrol.sh` 首跑（含写入，耗订阅额度）；launchd 定时（README 有命令）
