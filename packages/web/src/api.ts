@@ -112,9 +112,9 @@ export const api = {
     get<{ key: Value; count: number }[] | { count: number }>(`/api/count/${type}${by ? `?by=${by}` : ''}`),
   action: (name: string, params: Record<string, Value>) => post<ActionResult>(`/api/actions/${name}`, { params }),
   fn: (name: string, params: Record<string, Value>) => post<unknown>(`/api/functions/${name}`, { params }),
-  audit: (limit = 30) => get<AuditRecord[]>(`/api/audit?limit=${limit}`),
-  notifications: (limit = 30) =>
-    get<{ id: number; message: string; at: string; link?: { objectType: string; pk: Value } }[]>(`/api/notifications?limit=${limit}`),
+  audit: (limit = 30, offset = 0) => get<AuditRecord[]>(`/api/audit?limit=${limit}&offset=${offset}`),
+  notifications: (limit = 30, offset = 0) =>
+    get<{ id: number; message: string; at: string; link?: { objectType: string; pk: Value } }[]>(`/api/notifications?limit=${limit}&offset=${offset}`),
   materialize: () =>
     post<{ objectType: string; totalRows: number; inserted: number; updated: number; skipped: unknown[]; nulled: unknown[] }[]>(
       '/api/materialize', {},

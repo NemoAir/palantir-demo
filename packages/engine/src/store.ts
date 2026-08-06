@@ -161,10 +161,10 @@ export class ObjectStore {
     }));
   }
 
-  listAudit(limit = 50): AuditRecord[] {
+  listAudit(limit = 50, offset = 0): AuditRecord[] {
     const rows = this.db
-      .prepare(`SELECT * FROM audit_log ORDER BY id DESC LIMIT ?`)
-      .all(limit) as { id: number; action: string; params_json: string; edits_json: string; at: string }[];
+      .prepare(`SELECT * FROM audit_log ORDER BY id DESC LIMIT ? OFFSET ?`)
+      .all(limit, offset) as { id: number; action: string; params_json: string; edits_json: string; at: string }[];
     return rows.map(r => ({
       id: r.id, action: r.action, at: r.at,
       params: JSON.parse(r.params_json) as Record<string, Value>,
@@ -178,10 +178,10 @@ export class ObjectStore {
       .run(message, new Date().toISOString(), link ? JSON.stringify(link) : null);
   }
 
-  listNotifications(limit = 50): { id: number; message: string; at: string; link?: { objectType: string; pk: string | number } }[] {
+  listNotifications(limit = 50, offset = 0): { id: number; message: string; at: string; link?: { objectType: string; pk: string | number } }[] {
     const rows = this.db
-      .prepare(`SELECT * FROM notifications ORDER BY id DESC LIMIT ?`)
-      .all(limit) as { id: number; message: string; at: string; link_json: string | null }[];
+      .prepare(`SELECT * FROM notifications ORDER BY id DESC LIMIT ? OFFSET ?`)
+      .all(limit, offset) as { id: number; message: string; at: string; link_json: string | null }[];
     return rows.map(r => ({
       id: r.id, message: r.message, at: r.at,
       ...(r.link_json ? { link: JSON.parse(r.link_json) as { objectType: string; pk: string | number } } : {}),

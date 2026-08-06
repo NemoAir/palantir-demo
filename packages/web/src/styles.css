@@ -285,6 +285,38 @@ input, select { font: inherit; }
   color: var(--text); margin-bottom: 14px;
 }
 
+/* 批K：活动页（全部审计/通知 + 分页）+ 右栏"全部"入口 */
+.rail-all { float: right; color: var(--muted); font-size: 11px; letter-spacing: 0; }
+.rail-all:hover { color: var(--semantic); }
+.activity-page { max-width: 760px; }
+.tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab-row button {
+  padding: 5px 16px; border: 1px solid var(--line); border-radius: 4px;
+  color: var(--muted); font-size: 12.5px;
+}
+.tab-row button.active { color: var(--kinetic); border-color: var(--kinetic-dim); background: rgba(232, 179, 60, 0.07); }
+.activity-list .audit-item.wide { padding: 8px 0 8px 12px; }
+.activity-list .audit-item .head { gap: 10px; }
+.edits-count { color: var(--muted); font-size: 11px; margin-top: 3px; }
+.pager { display: flex; align-items: center; gap: 14px; margin-top: 16px; color: var(--muted); font-size: 12px; }
+.pager button { border: 1px solid var(--line); border-radius: 4px; padding: 4px 12px; color: var(--text); font-size: 12px; }
+.pager button:hover:not(:disabled) { border-color: var(--semantic); color: var(--semantic); }
+.pager button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* 批L：概念页 + 数据流向图 */
+.concepts-page { max-width: 760px; }
+.concept-btn.active { border-color: var(--semantic); background: rgba(91, 141, 239, 0.1); }
+.flow-layer { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
+.flow-layer-name { color: var(--muted); font-size: 11px; letter-spacing: 0.06em; margin-bottom: 7px; }
+.flow-boxes { display: flex; gap: 8px; flex-wrap: wrap; }
+.flow-box {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px;
+  padding: 6px 12px; min-width: 96px;
+}
+.flow-box-name { font-size: 12.5px; font-weight: 600; font-family: var(--mono); }
+.flow-box-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+.flow-arrow-row { color: var(--muted); font-size: 11.5px; padding: 7px 4px; }
+
 /* 批J：血缘分段流动动画 */
 .lineage-arrow { display: inline-block; }
 .lineage-arrow.flowing { color: var(--kinetic); animation: arrow-flow 0.55s ease-in-out infinite; }

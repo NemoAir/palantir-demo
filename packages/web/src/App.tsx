@@ -9,7 +9,9 @@ type View =
   | { kind: 'list'; type: string }
   | { kind: 'detail'; type: string; pk: Value }
   | { kind: 'action'; name: string; prefill?: Record<string, Value> }
-  | { kind: 'fn'; name: string; prefill?: Record<string, Value> };
+  | { kind: 'fn'; name: string; prefill?: Record<string, Value> }
+  | { kind: 'activity'; tab: 'audit' | 'notif' }
+  | { kind: 'concepts' };
 
 /** 运算符按属性类型收窄（列表过滤与条件构造器共用）。 */
 const OPS_BY_TYPE: Record<string, string[]> = {
@@ -40,6 +42,25 @@ const fkTarget = (schema: SchemaView, type: string, prop: string): ObjectTypeDef
 };
 
 const OP_CN: Record<string, string> = { '<': '低于', '<=': '不高于', '>': '高于', '>=': '不低于', '=': '等于', '!=': '不等于', '~': '包含' };
+
+/** 审计参数可读化：displayName + 对象引用翻名 + 枚举翻标签（右栏与活动页共用）。 */
+const readableAuditParams = (
+  schema: SchemaView, titles: TitleMap, action: string, params: Record<string, Value>,
+): { label: string; value: string }[] => {
+  const meta = schema.actionTypes.find(a => a.apiName === action);
+  return Object.entries(params).map(([k, v]) => {
+    const pdef = meta?.parameters.find(p => p.apiName === k);
+    let value = String(v);
+    if (pdef?.editor?.kind === 'objectRef') {
+      const t = titles[pdef.editor.objectType]?.[String(v)];
+      if (t && t !== value) value = `${value} ${t}`;
+    } else if (pdef?.editor?.kind === 'enum') {
+      const o = pdef.editor.options.find(op => op.value === String(v));
+      if (o && o.label !== o.value) value = o.label;
+    }
+    return { label: pdef?.displayName ?? k, value };
+  });
+};
 
 /** 过滤表达式的中文说明（解析正则镜像 engine/filter-parse）。解析失败返回 null，原样展示。 */
 const explainFilter = (schema: SchemaView, objectType: string, expr: string): string | null => {
@@ -90,7 +111,6 @@ export function App() {
   const [lineageMode, setLineageMode] = useState<'action' | 'materialize'>('action');
   const [auditKey, setAuditKey] = useState(0);
   const [fatal, setFatal] = useState<string | null>(null);
-  const [showConcepts, setShowConcepts] = useState(false);
 
   /** 导航 = 压入浏览器历史（前进/后退键、返回按钮全部可用）。
    * pushState 必须在 updater 之外：StrictMode 会双调用 updater，副作用放里面会把历史压重。 */
@@ -169,9 +189,12 @@ export function App() {
           <span title="semantic elements：对象/属性/链接——世界里'有什么'（企业的名词）"><span className="dot dot-semantic" />语义（名词）对象 {schema.objectTypes.length} · 链接 {schema.linkTypes.length}</span>
           <span title="kinetic elements：Action/Function——对世界'能做什么'（企业的动词）"><span className="dot dot-kinetic" />动能（动词）Action {schema.actionTypes.length} · Function {schema.functions.length}</span>
         </span>
-        <button className="concept-btn" onClick={() => setShowConcepts(true)} title="这套系统的核心概念与闭环——一页讲清">◈ 概念地图</button>
+        <button
+          className={`concept-btn ${view.kind === 'concepts' ? 'active' : ''}`}
+          onClick={() => setView({ kind: 'concepts' })}
+          title="这套系统的核心概念、数据流向与闭环——一页讲清"
+        >◈ 概念地图</button>
       </header>
-      {showConcepts && <ConceptMap onClose={() => setShowConcepts(false)} />}
 
       <div className="main">
         <nav className="sidenav">
@@ -264,9 +287,19 @@ export function App() {
           {view.kind === 'fn' && (
             <FunctionPanel key={view.name} schema={schema} titles={titles} name={view.name} prefill={view.prefill} onDone={onActionDone} />
           )}
+          {view.kind === 'activity' && (
+            <ActivityPage key={view.tab} schema={schema} titles={titles} initialTab={view.tab} onJump={(t, pk) => setView({ kind: 'detail', type: t, pk })} />
+          )}
+          {view.kind === 'concepts' && <ConceptsPage />}
         </main>
 
-        <AuditRail refreshSignal={auditKey} schema={schema} titles={titles} onJump={(t, pk) => setView({ kind: 'detail', type: t, pk })} />
+        <AuditRail
+          refreshSignal={auditKey}
+          schema={schema}
+          titles={titles}
+          onJump={(t, pk) => setView({ kind: 'detail', type: t, pk })}
+          onOpenAll={tab => setView({ kind: 'activity', tab })}
+        />
       </div>
 
       <LineageBar play={lineagePlay} mode={lineageMode} />
@@ -989,36 +1022,20 @@ function RematerializeButton({ onDone }: { onDone: () => void }) {
   );
 }
 
-function AuditRail({ refreshSignal, schema, titles, onJump }: {
-  refreshSignal: number; schema: SchemaView; titles: TitleMap; onJump: (type: string, pk: Value) => void;
+function AuditRail({ refreshSignal, schema, titles, onJump, onOpenAll }: {
+  refreshSignal: number; schema: SchemaView; titles: TitleMap;
+  onJump: (type: string, pk: Value) => void; onOpenAll: (tab: 'audit' | 'notif') => void;
 }) {
   const [audit, setAudit] = useState<AuditRecord[]>([]);
   const [notifs, setNotifs] = useState<{ id: number; message: string; at: string; link?: { objectType: string; pk: Value } }[]>([]);
   const lastTop = useRef<number>(0);
   const actionMeta = useMemo(() => new Map(schema.actionTypes.map(a => [a.apiName, a])), [schema]);
 
-  /** 参数按 schema 的 displayName 渲染成可读键值行；对象引用翻名、枚举翻标签。 */
-  const readableParams = (action: string, params: Record<string, Value>): { label: string; value: string }[] => {
-    const meta = actionMeta.get(action);
-    return Object.entries(params).map(([k, v]) => {
-      const pdef = meta?.parameters.find(p => p.apiName === k);
-      let value = String(v);
-      if (pdef?.editor?.kind === 'objectRef') {
-        const t = titles[pdef.editor.objectType]?.[String(v)];
-        if (t && t !== value) value = `${value} ${t}`;
-      } else if (pdef?.editor?.kind === 'enum') {
-        const o = pdef.editor.options.find(op => op.value === String(v));
-        if (o && o.label !== o.value) value = o.label;
-      }
-      return { label: pdef?.displayName ?? k, value };
-    });
-  };
-
   useEffect(() => {
     let live = true;
     const load = () => {
-      api.audit(30).then(a => { if (live) setAudit(a); }).catch(() => {});
-      api.notifications(15).then(n => { if (live) setNotifs(n); }).catch(() => {});
+      api.audit(8).then(a => { if (live) setAudit(a); }).catch(() => {});
+      api.notifications(6).then(n => { if (live) setNotifs(n); }).catch(() => {});
     };
     load();
     const t = setInterval(load, 5000);
@@ -1031,7 +1048,9 @@ function AuditRail({ refreshSignal, schema, titles, onJump }: {
 
   return (
     <aside className="audit-rail">
-      <div className="rail-title">审计流 AUDIT TRAIL</div>
+      <div className="rail-title">审计流 AUDIT TRAIL
+        <button className="rail-all" onClick={() => onOpenAll('audit')}>全部 →</button>
+      </div>
       {audit.length === 0 && <div className="empty" style={{ padding: '10px 0' }}>还没有决策记录</div>}
       {audit.map(a => (
         <div className={`audit-item ${a.id === lastTop.current && refreshSignal > 0 ? 'fresh' : ''}`} key={a.id}>
@@ -1041,13 +1060,15 @@ function AuditRail({ refreshSignal, schema, titles, onJump }: {
           </div>
           <div className="time-full">{fmtTime(a.at)}</div>
           <div className="params-grid">
-            {readableParams(a.action, a.params).map(p => (
+            {readableAuditParams(schema, titles, a.action, a.params).map(p => (
               <span className="param-pair" key={p.label}><span className="param-label">{p.label}</span>{p.value}</span>
             ))}
           </div>
         </div>
       ))}
-      <div className="rail-title" style={{ marginTop: 18 }}>通知 NOTIFICATIONS</div>
+      <div className="rail-title" style={{ marginTop: 18 }}>通知 NOTIFICATIONS
+        <button className="rail-all" onClick={() => onOpenAll('notif')}>全部 →</button>
+      </div>
       {notifs.map(n => (
         <div className={`notif-item ${n.link ? 'linked' : ''}`} key={n.id}
           onClick={n.link ? () => onJump(n.link!.objectType, n.link!.pk) : undefined}
@@ -1058,6 +1079,81 @@ function AuditRail({ refreshSignal, schema, titles, onJump }: {
         </div>
       ))}
     </aside>
+  );
+}
+
+/* ---------- 活动页：全部审计 / 通知（分页浏览） ---------- */
+function ActivityPage({ schema, titles, initialTab, onJump }: {
+  schema: SchemaView; titles: TitleMap; initialTab: 'audit' | 'notif';
+  onJump: (type: string, pk: Value) => void;
+}) {
+  const PAGE = 20;
+  const [tab, setTab] = useState<'audit' | 'notif'>(initialTab);
+  const [page, setPage] = useState(0);
+  const [audit, setAudit] = useState<AuditRecord[] | null>(null);
+  const [notifs, setNotifs] = useState<{ id: number; message: string; at: string; link?: { objectType: string; pk: Value } }[] | null>(null);
+
+  useEffect(() => {
+    if (tab === 'audit') {
+      setAudit(null);
+      api.audit(PAGE, page * PAGE).then(setAudit).catch(() => setAudit([]));
+    } else {
+      setNotifs(null);
+      api.notifications(PAGE, page * PAGE).then(setNotifs).catch(() => setNotifs([]));
+    }
+  }, [tab, page]);
+
+  const rows = tab === 'audit' ? audit : notifs;
+  const lastPage = rows !== null && rows.length < PAGE;
+
+  return (
+    <div className="activity-page">
+      <h2>决策活动 <span style={{ color: 'var(--muted)', fontWeight: 400 }}>Audit &amp; Notifications</span></h2>
+      <div className="subtitle">每一次 Action 提交的完整留痕（新→旧）。审计不可篡改，是"决策数据"的账本。</div>
+      <div className="tab-row">
+        <button className={tab === 'audit' ? 'active' : ''} onClick={() => { setTab('audit'); setPage(0); }}>审计流</button>
+        <button className={tab === 'notif' ? 'active' : ''} onClick={() => { setTab('notif'); setPage(0); }}>通知</button>
+      </div>
+      {rows === null && <div className="empty">加载中…</div>}
+      {tab === 'audit' && audit !== null && (
+        <div className="activity-list">
+          {audit.length === 0 && <div className="empty">{page === 0 ? '还没有决策记录' : '没有更多了'}</div>}
+          {audit.map(a => (
+            <div className="audit-item wide" key={a.id}>
+              <div className="head">
+                <span className="action-name">{schema.actionTypes.find(x => x.apiName === a.action)?.displayName ?? a.action}</span>
+                <span className="id">#{a.id}</span>
+                <span className="time-full" style={{ marginLeft: 'auto' }}>{fmtTime(a.at)}</span>
+              </div>
+              <div className="params-grid">
+                {readableAuditParams(schema, titles, a.action, a.params).map(p => (
+                  <span className="param-pair" key={p.label}><span className="param-label">{p.label}</span>{p.value}</span>
+                ))}
+              </div>
+              <div className="edits-count">{(a.edits as unknown[]).length} 项编辑原子写入</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {tab === 'notif' && notifs !== null && (
+        <div className="activity-list">
+          {notifs.length === 0 && <div className="empty">{page === 0 ? '还没有通知' : '没有更多了'}</div>}
+          {notifs.map(n => (
+            <div className={`notif-item ${n.link ? 'linked' : ''}`} key={n.id} style={{ padding: '7px 0' }}
+              onClick={n.link ? () => onJump(n.link!.objectType, n.link!.pk) : undefined}
+            >
+              <div><span className="notif-text">{n.message}</span>{n.link && <span className="notif-arrow"> → 点击查看</span>}</div>
+              <div className="time-full">{fmtTime(n.at)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="pager">
+        <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>← 上一页</button>
+        <span>第 {page + 1} 页</span>
+        <button disabled={lastPage} onClick={() => setPage(p => p + 1)}>下一页 →</button>
+      </div>
+    </div>
   );
 }
 
@@ -1112,35 +1208,99 @@ const CONCEPT_SECTIONS: { title: string; items: { term: string; en: string; cls:
   },
 ];
 
-function ConceptMap({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+/** 数据流向（技术落地版）：从数据源到四消费端的分层流。 */
+const DATA_FLOW: { layer: string; boxes: { name: string; sub?: string }[]; down?: string }[] = [
+  {
+    layer: '数据源',
+    boxes: [{ name: '问财 OpenAPI', sub: '真实科创板50 行情' }],
+    down: '数据接入 ingestion：对话内 Claude 拉取、整理落盘——引擎自身不发任何网络请求',
+  },
+  {
+    layer: '数据集（仓库内、可重放的事实底座）',
+    boxes: [{ name: 'datasets/*.csv', sub: '50 股票 · 10 行业 · 1 组合种子 · 2 持仓种子' }],
+    down: 'Funnel 物化：类型校验 / 脏值报告（14 家未盈利 PE 置空）/ 幂等重跑 + 编辑账本重放',
+  },
+  {
+    layer: '存储：SQLite 单文件 ontology.db（better-sqlite3，零服务零配置）',
+    boxes: [
+      { name: 'obj_* ×6', sub: '物化对象表' },
+      { name: 'object_edits', sub: '编辑账本（EAV）' },
+      { name: 'audit_log', sub: '审计流水' },
+      { name: 'notifications', sub: '通知' },
+    ],
+    down: 'SQL 读写：表/列名只取注册元数据（标识符白名单），值一律参数绑定',
+  },
+  {
+    layer: '引擎 packages/engine（题材无关——grep 验收零金融词汇）',
+    boxes: [
+      { name: 'OMS', sub: '元数据注册/校验' },
+      { name: 'Funnel', sub: '物化 + 重放' },
+      { name: 'OSS', sub: '查询/聚合/遍历' },
+      { name: 'Action', sub: '治理写管线' },
+      { name: 'Function', sub: '只读计算' },
+      { name: 'ai-tools', sub: 'schema→AI 工具集' },
+    ],
+    down: '同一份元数据向外供给：HTTP :4177（Web）· stdio（MCP）· 进程内（CLI / OSDK 类型化客户端）',
+  },
+  {
+    layer: '消费端（四端零硬编码，schema 变则全端自动跟上）',
+    boxes: [
+      { name: 'Web UI :5177' },
+      { name: 'CLI' },
+      { name: 'MCP（AI 会话 / claude -p）' },
+      { name: 'api-agent.ts（SDK runloop）' },
+    ],
+  },
+];
 
+function ConceptsPage() {
   return (
-    <div className="concept-overlay" onClick={onClose}>
-      <div className="concept-drawer" onClick={e => e.stopPropagation()}>
-        <div className="concept-head">
-          <h2>◈ 概念地图</h2>
-          <span className="subtitle" style={{ margin: 0 }}>Palantir Ontology 的核心词汇，与本页面各区域的对应</span>
-          <button className="concept-close" onClick={onClose}>✕ 关闭</button>
-        </div>
-        {CONCEPT_SECTIONS.map(sec => (
-          <div key={sec.title}>
-            <div className="section-label">{sec.title}</div>
-            {sec.items.map(c => (
-              <div className={`concept-card ${c.cls}`} key={c.term}>
-                <div className="concept-term">
-                  <span className={`dot ${c.cls === 'kinetic' ? 'dot-kinetic' : 'dot-semantic'}`} style={c.cls === 'flow' ? { background: 'var(--muted)' } : undefined} />
-                  {c.term}<span className="concept-en">{c.en}</span>
-                </div>
-                <div className="concept-body">{c.body}</div>
+    <div className="concepts-page">
+      <h2>◈ 概念地图 <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 12 }}>Palantir Ontology 核心词汇 × 本项目落地</span></h2>
+      <div className="subtitle">先看词汇（世界观），再看数据流（工程落地）。左侧导航、底部血缘条与这里一一对应。</div>
+      {CONCEPT_SECTIONS.map(sec => (
+        <div key={sec.title}>
+          <div className="section-label">{sec.title}</div>
+          {sec.items.map(c => (
+            <div className={`concept-card ${c.cls}`} key={c.term}>
+              <div className="concept-term">
+                <span className={`dot ${c.cls === 'kinetic' ? 'dot-kinetic' : 'dot-semantic'}`} style={c.cls === 'flow' ? { background: 'var(--muted)' } : undefined} />
+                {c.term}<span className="concept-en">{c.en}</span>
               </div>
-            ))}
+              <div className="concept-body">{c.body}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+      <div className="section-label">数据流向（工程落地：谁写谁、存在哪）</div>
+      <div className="docs-note">
+        数据库用 SQLite（better-sqlite3 驱动）：项目根一个 <code>ontology.db</code> 文件就是全部状态——
+        六张对象物化表 + 编辑账本 + 审计 + 通知。删掉它重新 <code>materialize</code>，CSV 底座会重建，
+        但账本随库删除，所以它是"物化态"而非唯一真相：<b>CSV（事实）+ 你的编辑（决策）才是真相源</b>。
+      </div>
+      {DATA_FLOW.map(l => (
+        <div key={l.layer}>
+          <div className="flow-layer">
+            <div className="flow-layer-name">{l.layer}</div>
+            <div className="flow-boxes">
+              {l.boxes.map(b => (
+                <div className="flow-box" key={b.name}>
+                  <div className="flow-box-name">{b.name}</div>
+                  {b.sub && <div className="flow-box-sub">{b.sub}</div>}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+          {l.down && <div className="flow-arrow-row">↓ {l.down}</div>}
+        </div>
+      ))}
+      <div className="concept-card kinetic" style={{ marginTop: 10 }}>
+        <div className="concept-term"><span className="dot dot-kinetic" />写路径（治理不变量）</div>
+        <div className="concept-body">
+          无论谁发起（页面表单 / CLI / 对话里的 AI / 定时巡逻），写入只有一条路：
+          Action 管线（参数校验 → 提交前提 → apply 产出编辑）→ <b>同一个事务</b>写进
+          obj_* 物化表 + object_edits 账本 + audit_log 审计。没有旁门。
+        </div>
       </div>
     </div>
   );

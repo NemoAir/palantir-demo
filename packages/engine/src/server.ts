@@ -124,11 +124,17 @@ export function createApiServer(store: ObjectStore, opts: { datasetsDir?: string
         return json(res, 200, materializeAll(store, opts.datasetsDir));
       }
 
-      // GET /api/audit?limit= / GET /api/notifications
+      // GET /api/audit?limit=&offset= / GET /api/notifications?limit=&offset=
       if (req.method === 'GET' && parts[1] === 'audit')
-        return json(res, 200, store.listAudit(Number(url.searchParams.get('limit') ?? 20)));
+        return json(res, 200, store.listAudit(
+          Number(url.searchParams.get('limit') ?? 20),
+          Number(url.searchParams.get('offset') ?? 0),
+        ));
       if (req.method === 'GET' && parts[1] === 'notifications')
-        return json(res, 200, store.listNotifications(Number(url.searchParams.get('limit') ?? 20)));
+        return json(res, 200, store.listNotifications(
+          Number(url.searchParams.get('limit') ?? 20),
+          Number(url.searchParams.get('offset') ?? 0),
+        ));
 
       return json(res, 404, { error: 'not found' });
     } catch (e) {
