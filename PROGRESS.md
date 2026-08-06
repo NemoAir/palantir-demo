@@ -1,7 +1,7 @@
 # PROGRESS — palantir-demo（Palantir 本体论学习与实战）
 
 ## 当前焦点
-🏁 M1–M5 完成 + 用户反馈迭代批 A–E 完成（2026-08-06）。批A 导航历史/审计可读化/系统Action折叠/估值卡/运算符收窄；批B 元模型 editor（enum/objectRef/filterExpr 三类参数编辑器，一处声明三端受益）+ Function 面板；批C 新动词 createPortfolio/updateResearchNote（元模型威力实证）；批D 通知可点击+重物化按钮；批E examples/api-agent.ts（Claude API tool-use runloop，编译验证过、未实跑——运行需 API 凭据）。MCP 实连已验收（用户会话直连查询/估值成功）。71+ 测试全绿。
+🏁 M1–M5 + 迭代批 A–E + 第二轮迭代批 F–I 完成（2026-08-06 晚）。批F 概念地图/docs 元数据/导航分组抽屉；批G 引用可读化（titleProperty/enumOptions/format/hint 四项元模型扩展——外键翻名/状态徽章/条件中文化/最新价提示/过滤值建议）；批H 研判可命名（本体演进实证）+ init 自动补列迁移（真实坑补机制）+ 系统动词收紧 + 扫描结果一键落账；批I 活系统（headless claude -p 实跑验证零 API key 链路 + daily-patrol.sh + launchd 模板）。77 测试全绿，浏览器实操验收全过（`docs/acceptance/iter-fghi-evidence.md`）。
 
 ## 全景任务清单
 - ✅ ① 调研 Palantir Ontology（139 论断 → 25 条对抗验证 75 票 0 反对 → 9 组 high 置信发现；骨架页亲验；报告 `docs/ontology-research.md`）
@@ -36,8 +36,9 @@
 - 数据拉取依赖会话内金融技能（hithink/mx 系列）：仅 Claude 会话可调，产出落 `datasets/*.csv`；引擎侧不做任何网络拉数。
 
 ## 下一步 / 游标
-1. 用户体验迭代批 A–E 成果（刷新 :5177；试条件构造器/搜索选择器/新建组合/Function 面板）
-2. 可选深化：spec §6 远期项（Interface 多态 / scenario 沙箱 / 权限）、examples/api-agent.ts 实跑（需 API 凭据）、行情定时刷新自动化
+1. 用户体验批 F–I 成果（刷新 :5177；看概念地图/预警列表可读化/调仓最新价提示/预警扫描一键落账）
+2. 用户可选亲手激活：`./examples/daily-patrol.sh` 首跑（含写入，耗订阅额度）；launchd 定时（README 有命令）
+3. 可选深化：行情自动拉取脚本（问财 OpenAPI，key 走环境变量）、spec §6 远期项（Interface 多态 / scenario 沙箱 / 权限）、api-agent.ts 实跑（需 API 凭据）
 
 ## 关键文件索引
 - `docs/ontology-research.md` —— 调研报告（对抗验证版，✔3/✅/◐/○ 置信分级）
