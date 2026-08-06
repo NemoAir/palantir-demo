@@ -62,7 +62,7 @@ export interface SchemaView {
   objectTypes: ObjectTypeDef[];
   linkTypes: LinkTypeDef[];
   actionTypes: ActionTypeView[];
-  functions: { apiName: string; displayName: string; docs?: string; parameters: ParamDef[] }[];
+  functions: { apiName: string; displayName: string; docs?: string; resultLabels?: Record<string, string>; parameters: ParamDef[] }[];
 }
 
 export type ActionResult =
@@ -119,7 +119,7 @@ export const api = {
     post<{ objectType: string; totalRows: number; inserted: number; updated: number; skipped: unknown[]; nulled: unknown[] }[]>(
       '/api/materialize', {},
     ),
-  chat: (prompt: string) => post<ChatResult>('/api/chat', { prompt }),
+  chat: (prompt: string, conversationId?: string) => post<ChatResult>('/api/chat', { prompt, conversationId }),
 };
 
 export interface ChatEvent {
@@ -130,4 +130,4 @@ export interface ChatEvent {
   output?: string;
   isError?: boolean;
 }
-export interface ChatResult { driver: 'api' | 'claude-cli'; events: ChatEvent[]; final: string; }
+export interface ChatResult { driver: 'api' | 'claude-cli'; conversationId: string; events: ChatEvent[]; final: string; }

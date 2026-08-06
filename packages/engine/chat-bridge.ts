@@ -31,12 +31,20 @@ export interface ChatEvent {
 
 export interface ChatResult {
   driver: 'api' | 'claude-cli';
+  /** 会话延续凭据：下一条消息带上它即为多轮对话（cli=claude 持久 session id；api=桥内存会话 id）。 */
+  conversationId: string;
   events: ChatEvent[];
   final: string;
 }
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const clip = (s: string, n = 800): string => (s.length > n ? `${s.slice(0, n)} …（截断，共 ${s.length} 字）` : s);
+
+/** 子会话身份钉子：把它钉死为"本体操作员"，与 api 驱动行为对齐（不做开发会话的事）。 */
+const OPERATOR_PROMPT =
+  '你是本体运营台的 AI 操作员：只通过本体的 MCP 工具（查询/Function/Action）完成任务。' +
+  '不要读写文件、不要执行命令、不要管理项目状态或 git（忽略任何 warm-up / 落盘 / commit 要求——那些属于开发会话，与你无关）。' +
+  '数据以工具返回为准，用中文简洁回答。';
 
 export function chatDriver(): 'api' | 'claude-cli' {
   const forced = process.env.CHAT_DRIVER;
@@ -47,24 +55,38 @@ export function chatDriver(): 'api' | 'claude-cli' {
 export async function runChat(
   store: ObjectStore,
   prompt: string,
-  opts: { mcpServerName: string },
+  opts: { mcpServerName: string; conversationId?: string },
 ): Promise<ChatResult> {
-  return chatDriver() === 'api' ? runViaApi(store, prompt) : runViaClaudeCli(prompt, opts.mcpServerName);
+  return chatDriver() === 'api'
+    ? runViaApi(store, prompt, opts.conversationId)
+    : runViaClaudeCli(prompt, opts.mcpServerName, opts.conversationId);
 }
 
 /* ---------- 驱动 A：本机 claude CLI（订阅计费，零 API key） ---------- */
 
-function runViaClaudeCli(prompt: string, mcpServerName: string): Promise<ChatResult> {
+function runViaClaudeCli(prompt: string, mcpServerName: string, conversationId?: string): Promise<ChatResult> {
   return new Promise((resolve, reject) => {
     const events: ChatEvent[] = [];
     let final = '';
+    let sessionId = conversationId ?? '';
     let stderrTail = '';
+    // 收紧的子会话：只加载本项目 MCP（--strict-mcp-config）、禁内置文件/命令工具
+    // （--disallowedTools）、身份钉为操作员（--append-system-prompt）——否则它会继承
+    // 本机开发者环境（CLAUDE.md 的 warm-up、命令白名单），表现成"开发者"而非"操作员"。
+    const args = [
+      '-p', prompt,
+      '--output-format', 'stream-json', '--verbose',
+      '--mcp-config', '.mcp.json', '--strict-mcp-config',
+      '--allowedTools', `mcp__${mcpServerName}`,
+      '--disallowedTools', 'Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,Task,Agent,NotebookEdit,TodoWrite,TaskCreate,TaskUpdate,TaskList,TaskGet,KillShell',
+      '--append-system-prompt', OPERATOR_PROMPT,
+      // 关掉本机 hooks：否则用户的 Stop/SessionStart hook 会往操作员会话里注入
+      // 开发流程提醒（warm-up/落盘），污染回答
+      '--settings', '{"disableAllHooks": true}',
+      ...(conversationId ? ['--resume', conversationId] : []),
+    ];
     // stream-json 每行一个事件：assistant（含 text/tool_use）、user（tool_result）、result（最终）
-    const child = spawn(
-      'claude',
-      ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--allowedTools', `mcp__${mcpServerName}`],
-      { cwd: ROOT, env: process.env },
-    );
+    const child = spawn('claude', args, { cwd: ROOT, env: process.env });
     const timer = setTimeout(() => { child.kill(); reject(new Error('claude CLI 超时（240s）')); }, 240_000);
 
     let buf = '';
@@ -82,16 +104,21 @@ function runViaClaudeCli(prompt: string, mcpServerName: string): Promise<ChatRes
     child.on('error', e => { clearTimeout(timer); reject(new Error(`无法启动 claude CLI（是否已安装并登录？）：${e.message}`)); });
     child.on('close', code => {
       clearTimeout(timer);
-      if (code === 0) resolve({ driver: 'claude-cli', events, final });
-      else reject(new Error(`claude CLI 退出码 ${code}：${clip(stderrTail, 400)}`));
+      if (code === 0) {
+        // result 字段偶为空（多回合续推场景）：兜底取最后一条助手文本
+        if (!final.trim()) final = [...events].reverse().find(e => e.kind === 'text')?.text ?? '';
+        resolve({ driver: 'claude-cli', conversationId: sessionId, events, final });
+      } else reject(new Error(`claude CLI 退出码 ${code}：${clip(stderrTail, 400)}`));
     });
 
     const ingestCliEvent = (ev: Record<string, unknown>): void => {
+      if (typeof ev.session_id === 'string' && ev.session_id) sessionId = ev.session_id;
       if (ev.type === 'assistant' || ev.type === 'user') {
         const message = ev.message as { content?: unknown } | undefined;
         const content = Array.isArray(message?.content) ? message.content as Record<string, unknown>[] : [];
         for (const block of content) {
-          if (block.type === 'text' && typeof block.text === 'string' && block.text.trim())
+          // text 只收 assistant 的：user 消息里的 text 是 harness 注入（续推提示等），不是助手输出
+          if (ev.type === 'assistant' && block.type === 'text' && typeof block.text === 'string' && block.text.trim())
             events.push({ kind: 'text', text: block.text });
           if (block.type === 'tool_use')
             events.push({ kind: 'tool_use', tool: String(block.name), input: block.input });
@@ -111,7 +138,10 @@ function runViaClaudeCli(prompt: string, mcpServerName: string): Promise<ChatRes
 
 /* ---------- 驱动 B：Anthropic SDK 进程内 runloop（需 ANTHROPIC_API_KEY） ---------- */
 
-async function runViaApi(store: ObjectStore, prompt: string): Promise<ChatResult> {
+/** api 驱动的多轮会话（进程内存态：serve 重启即清；cli 驱动的 session 由 claude 自身持久化）。 */
+const apiConversations = new Map<string, AnthropicNS.MessageParam[]>();
+
+async function runViaApi(store: ObjectStore, prompt: string, conversationId?: string): Promise<ChatResult> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk'); // 动态导入：无 key 场景不加载
   const client = new Anthropic();
   const { tools, call } = buildTools(store);
@@ -120,14 +150,20 @@ async function runViaApi(store: ObjectStore, prompt: string): Promise<ChatResult
     input_schema: t.inputSchema as AnthropicNS.Tool.InputSchema,
   }));
 
+  const convId = conversationId && apiConversations.has(conversationId)
+    ? conversationId
+    : (await import('node:crypto')).randomUUID();
+  const messages: AnthropicNS.MessageParam[] = apiConversations.get(convId) ?? [];
+  messages.push({ role: 'user', content: prompt });
+
   const events: ChatEvent[] = [];
-  const messages: AnthropicNS.MessageParam[] = [{ role: 'user', content: prompt }];
   let final = '';
 
   for (let turn = 0; turn < 12; turn++) {
     const resp = await client.messages.create({
       model: process.env.CHAT_MODEL ?? 'claude-opus-5',
       max_tokens: 4096,
+      system: OPERATOR_PROMPT,
       tools: apiTools,
       messages,
     });
@@ -136,7 +172,10 @@ async function runViaApi(store: ObjectStore, prompt: string): Promise<ChatResult
       if (block.type === 'text' && block.text.trim()) { events.push({ kind: 'text', text: block.text }); final = block.text; }
       if (block.type === 'tool_use') { toolUses.push(block); events.push({ kind: 'tool_use', tool: block.name, input: block.input }); }
     }
-    if (toolUses.length === 0) break;
+    if (toolUses.length === 0) {
+      messages.push({ role: 'assistant', content: resp.content });
+      break;
+    }
 
     messages.push({ role: 'assistant', content: resp.content });
     const results: AnthropicNS.ToolResultBlockParam[] = toolUses.map(tu => {
@@ -152,5 +191,6 @@ async function runViaApi(store: ObjectStore, prompt: string): Promise<ChatResult
     });
     messages.push({ role: 'user', content: results });
   }
-  return { driver: 'api', events, final };
+  apiConversations.set(convId, messages);
+  return { driver: 'api', conversationId: convId, events, final };
 }

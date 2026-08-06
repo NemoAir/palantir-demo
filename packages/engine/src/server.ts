@@ -16,8 +16,8 @@ export function createApiServer(
   store: ObjectStore,
   opts: {
     datasetsDir?: string;
-    /** 可选对话处理器（由部署层注入，如 chat-bridge）：POST /api/chat { prompt } → 结果透传。 */
-    chat?: (prompt: string) => Promise<unknown>;
+    /** 可选对话处理器（由部署层注入，如 chat-bridge）：POST /api/chat { prompt, conversationId? } → 结果透传。 */
+    chat?: (prompt: string, conversationId?: string) => Promise<unknown>;
   } = {},
 ): http.Server {
   const oss = new ObjectSetService(store);
@@ -39,7 +39,10 @@ export function createApiServer(
       parameters: a.parameters,
       criteria: a.criteria.map(c => ({ apiName: c.apiName, displayName: c.displayName, message: c.message })),
     })),
-    functions: registry.functions().map(f => ({ apiName: f.apiName, displayName: f.displayName, docs: f.docs, parameters: f.parameters ?? [] })),
+    functions: registry.functions().map(f => ({
+      apiName: f.apiName, displayName: f.displayName, docs: f.docs,
+      resultLabels: f.resultLabels, parameters: f.parameters ?? [],
+    })),
   });
 
   const json = (res: http.ServerResponse, status: number, body: unknown): void => {
@@ -50,7 +53,7 @@ export function createApiServer(
     res.end(JSON.stringify(body));
   };
 
-  const readBody = (req: http.IncomingMessage): Promise<{ params?: Record<string, Value>; prompt?: string }> =>
+  const readBody = (req: http.IncomingMessage): Promise<{ params?: Record<string, Value>; prompt?: string; conversationId?: string }> =>
     new Promise((resolve, reject) => {
       let data = '';
       req.on('data', c => (data += c));
@@ -131,7 +134,7 @@ export function createApiServer(
         const body = await readBody(req);
         const prompt = String(body.prompt ?? '').trim();
         if (!prompt) return json(res, 400, { error: 'prompt required' });
-        return json(res, 200, await opts.chat(prompt));
+        return json(res, 200, await opts.chat(prompt, body.conversationId || undefined));
       }
 
       // POST /api/materialize —— 重新物化本地数据集（不联网；编辑经账本重放保留）

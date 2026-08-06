@@ -316,23 +316,29 @@ const CHAT_EXAMPLES = [
   '给持仓市值最大的股票写一条中性研判，标题「AI 巡检」。',
 ];
 
+/** 工具名短化：mcp__astock-ontology__fn_x → fn_x（可读；悬停仍见全名）。 */
+const shortTool = (t?: string): string => (t ?? '').replace(/^mcp__[^_]+(?:[-_][^_]+)*__/, '');
+
 function ChatDock({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [turns, setTurns] = useState<{ prompt: string; result?: ChatResult }[]>([]);
+  const [turns, setTurns] = useState<{ prompt: string; sentBody: unknown; result?: ChatResult }[]>([]);
   const [driver, setDriver] = useState<string | null>(null);
+  const [convId, setConvId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const send = async (raw?: string) => {
     const prompt = (raw ?? input).trim();
     if (!prompt || busy) return;
     setErr(null); setBusy(true); setInput('');
-    setTurns(t => [...t, { prompt }]);
+    const sentBody = { prompt, conversationId: convId ?? undefined };
+    setTurns(t => [...t, { prompt, sentBody }]);
     try {
-      const r = await api.chat(prompt);
+      const r = await api.chat(prompt, convId ?? undefined);
       setDriver(r.driver);
+      setConvId(r.conversationId || null); // 会话延续凭据：下一条消息带上它即为多轮
       setTurns(t => t.map((x, i) => (i === t.length - 1 ? { ...x, result: r } : x)));
       const wrote = r.events.some(e => e.kind === 'tool_use' && (e.tool ?? '').includes('action_'));
       if (wrote) onDone(); // AI 写入同样点亮闭环血缘并刷新全局
@@ -343,6 +349,8 @@ function ChatDock({ onDone }: { onDone: () => void }) {
       setTimeout(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }), 50);
     }
   };
+
+  const reset = () => { setTurns([]); setConvId(null); setErr(null); };
 
   if (!open) {
     return (
@@ -356,21 +364,26 @@ function ChatDock({ onDone }: { onDone: () => void }) {
       <div className="chat-head">
         <span className="chat-title">◆ AI 助手 · 直接操作本体</span>
         {driver && (
-          <span className="chat-driver" title="后端桥自动选择：有 ANTHROPIC_API_KEY 走 SDK，否则走本机 Claude Code（订阅）">
+          <span className="chat-driver" title="后端桥自动选择：有 ANTHROPIC_API_KEY 走 SDK runloop，否则走本机 Claude Code（订阅）。两条路工具集一致、治理一致。">
             {driver === 'claude-cli' ? 'Claude Code · 订阅' : 'Anthropic API'}
           </span>
         )}
+        {turns.length > 0 && <button className="chat-reset" onClick={reset} title="结束当前会话（清空延续凭据 conversationId）">⟳ 新对话</button>}
         <button className="concept-close" onClick={() => setOpen(false)}>✕</button>
       </div>
       <div className="chat-list" ref={listRef}>
         {turns.length === 0 && (
           <div className="chat-empty">
             <div className="subtitle" style={{ marginBottom: 8 }}>
-              它拿到的是本体的全部工具（查询 / Function / Action）——写入照走治理管线并留审计。试试：
+              它只有本体的工具（查询 / Function / Action）——写入照走治理管线并留审计。多轮对话：追问会带着上一轮的记忆。试试：
             </div>
             {CHAT_EXAMPLES.map(ex => (
               <button key={ex} className="chat-example" onClick={() => send(ex)}>{ex}</button>
             ))}
+            <div className="chat-path">
+              数据路径：浏览器 → <code>POST /api/chat</code> → chat-bridge（选驱动）→ claude CLI / SDK runloop
+              → 本体 MCP 工具 → 引擎（治理管线）→ SQLite；过程逐事件回传，每轮尾部可看原始 JSON。
+            </div>
           </div>
         )}
         {turns.map((t, i) => (
@@ -383,16 +396,20 @@ function ChatDock({ onDone }: { onDone: () => void }) {
                     <div className="chat-text" key={j}>{e.text}</div>
                   ) : e.kind === 'tool_use' ? (
                     <details className="chat-tool" key={j}>
-                      <summary>⚙ {e.tool}</summary>
+                      <summary title={e.tool}>⚙ {shortTool(e.tool)}</summary>
                       <pre>{JSON.stringify(e.input, null, 2)}</pre>
                     </details>
                   ) : (
                     <details className={`chat-tool result ${e.isError ? 'error' : ''}`} key={j}>
-                      <summary>{e.isError ? '✕ 出错' : '↳ 返回'}{e.tool ? ` · ${e.tool}` : ''}</summary>
+                      <summary title={e.tool}>{e.isError ? '✕ 出错' : '↳ 返回'}{e.tool ? ` · ${shortTool(e.tool)}` : ''}</summary>
                       <pre>{e.output}</pre>
                     </details>
                   )
                 ))}
+                <details className="chat-tool raw">
+                  <summary>⧉ 原始报文（请求 / 响应 JSON）</summary>
+                  <pre>{`// POST /api/chat 请求体\n${JSON.stringify(t.sentBody, null, 2)}\n\n// 响应（driver=${t.result.driver}，conversationId 用于下一轮延续）\n${JSON.stringify(t.result, null, 2)}`}</pre>
+                </details>
               </div>
             ) : (
               <div className="chat-assistant"><span className="chat-busy">Claude 正在操作本体…（首次可能要几十秒）</span></div>
@@ -405,7 +422,7 @@ function ChatDock({ onDone }: { onDone: () => void }) {
         <textarea
           value={input}
           rows={2}
-          placeholder="一句话任务，如：查 P1 估值并总结"
+          placeholder={convId ? '继续追问（带上一轮记忆）…' : '一句话任务，如：查 P1 估值并总结'}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
         />
@@ -971,6 +988,17 @@ function FunctionPanel({ schema, titles, name, prefill, onDone }: {
     }
   };
 
+  /** 结果键展示名：函数自声明 resultLabels 优先 → 全本体属性 displayName 词典 → 原样。 */
+  const propDict = useMemo(() => {
+    const d: Record<string, string> = {};
+    for (const ot of schema.objectTypes) for (const p of ot.properties) d[p.apiName] ??= p.displayName;
+    return d;
+  }, [schema]);
+  const labelFor = useCallback(
+    (k: string) => fn.resultLabels?.[k] ?? propDict[k] ?? k,
+    [fn.resultLabels, propDict],
+  );
+
   /** 通用行动作启发：结果行的键能覆盖某系统 Action 的全部必填参数 → 提供一键执行。
    * 这就是"自动化"的最小形态：Function 发现 → 结果行携带参数 → 系统动词落账。 */
   const rowSystemActions = (row: Record<string, Value>) =>
@@ -1011,6 +1039,7 @@ function FunctionPanel({ schema, titles, name, prefill, onDone }: {
       {result !== undefined && (
         <ResultView
           data={result}
+          labelFor={labelFor}
           rowExtra={row => {
             const acts = rowSystemActions(row);
             if (acts.length === 0) return null;
@@ -1038,8 +1067,9 @@ const numCell = (k: string, v: number) => (
 
 /** 通用结果展示（纯形状驱动，不特判具体 Function）：
  * 对象数组→表格（可挂行动作列）；对象→标量 KPI 卡 + 数组字段子表格；其余→JSON。 */
-function ResultView({ data, rowExtra }: {
+function ResultView({ data, rowExtra, labelFor = k => k }: {
   data: unknown; rowExtra?: (row: Record<string, Value>) => import('react').ReactNode;
+  labelFor?: (key: string) => string;
 }) {
   if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
     const rows = data as Record<string, Value>[];
@@ -1047,7 +1077,7 @@ function ResultView({ data, rowExtra }: {
     const hasExtra = rowExtra !== undefined && rows.some(r => rowExtra(r));
     return (
       <table className="data-table" style={{ marginTop: 10 }}>
-        <thead><tr>{cols.map(c => <th key={c} className={typeof rows[0][c] === 'number' ? 'num' : ''}>{c}</th>)}{hasExtra && <th />}</tr></thead>
+        <thead><tr>{cols.map(c => <th key={c} className={typeof rows[0][c] === 'number' ? 'num' : ''}>{labelFor(c)}</th>)}{hasExtra && <th />}</tr></thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
@@ -1074,7 +1104,7 @@ function ResultView({ data, rowExtra }: {
           <div className="valuation-kpis">
             {scalars.map(([k, v]) => (
               <div className="kpi" key={k}>
-                <div className="label">{k}</div>
+                <div className="label">{labelFor(k)}</div>
                 <div className="value" style={{ fontSize: typeof v === 'number' ? undefined : 14 }}>
                   {v === null ? '—' : typeof v === 'number' ? numCell(k, v) : String(v)}
                 </div>
@@ -1083,8 +1113,8 @@ function ResultView({ data, rowExtra }: {
           </div>
           {arrays.map(([k, v]) => (
             <div key={k}>
-              <div className="section-label">{k}（{(v as unknown[]).length}）</div>
-              <ResultView data={v} rowExtra={rowExtra} />
+              <div className="section-label">{labelFor(k)}（{(v as unknown[]).length}）</div>
+              <ResultView data={v} rowExtra={rowExtra} labelFor={labelFor} />
             </div>
           ))}
         </div>

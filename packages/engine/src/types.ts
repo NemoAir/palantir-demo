@@ -142,6 +142,11 @@ export interface FunctionDef {
   displayName: string;
   /** 一句话说明"这个函数算什么、为什么要跑"——各消费端展示。 */
   docs?: string;
+  /**
+   * 结果键的展示名（apiName→人类可读）。返回值是自由形状，schema 管不到——
+   * 由函数自己声明；消费端渲染时优先用它，其次查对象属性 displayName，最后原样。
+   */
+  resultLabels?: Record<string, string>;
   /** 参数声明（可选）：供 UI 表单与 AI 工具描述使用；运行时传参仍为宽松对象。 */
   parameters?: ParamDef[];
   logic(ctx: ReadonlyContext, params: Record<string, Value>): unknown;

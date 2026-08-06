@@ -13,7 +13,7 @@ const port = Number(process.env.PORT ?? 4177);
 createApiServer(store, {
   datasetsDir: join(root, 'datasets'),
   // Web 对话入口：驱动自动选择（有 ANTHROPIC_API_KEY 走 SDK，否则走本机 claude CLI 订阅）
-  chat: prompt => runChat(store, prompt, { mcpServerName: 'astock-ontology' }),
+  chat: (prompt, conversationId) => runChat(store, prompt, { mcpServerName: 'astock-ontology', conversationId }),
 }).listen(port, () => {
   console.log(`astock 本体 API: http://localhost:${port}/api/schema（chat 驱动：${chatDriver()}）`);
 });

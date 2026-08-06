@@ -441,6 +441,11 @@ input, select { font: inherit; }
   white-space: pre-wrap; word-break: break-all; margin-top: 3px; max-height: 180px; overflow-y: auto;
 }
 .chat-busy { color: var(--muted); font-size: 12px; }
+.chat-reset { color: var(--muted); font-size: 11.5px; border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.chat-reset:hover { color: var(--semantic); border-color: var(--semantic); }
+.chat-path { color: var(--muted); font-size: 11px; line-height: 1.7; margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.chat-path code { font-family: var(--mono); color: var(--semantic); }
+.chat-tool.raw > summary { color: var(--muted); opacity: 0.75; margin-top: 6px; }
 .chat-input-row { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
 .chat-input-row textarea {
   flex: 1; background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
