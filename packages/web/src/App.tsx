@@ -86,6 +86,8 @@ export function App() {
   const [view, setViewState] = useState<View>(() => (window.history.state as View | null) ?? { kind: 'list', type: 'Stock' });
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [lineagePlay, setLineagePlay] = useState(0);
+  /** 血缘条播放哪半环：Action 提交=右半环（本体→审计），重物化=左半环（数据集→本体）。 */
+  const [lineageMode, setLineageMode] = useState<'action' | 'materialize'>('action');
   const [auditKey, setAuditKey] = useState(0);
   const [fatal, setFatal] = useState<string | null>(null);
   const [showConcepts, setShowConcepts] = useState(false);
@@ -140,6 +142,7 @@ export function App() {
   }, [refreshCounts, refreshTitles]);
 
   const onActionDone = useCallback(() => {
+    setLineageMode('action');
     setLineagePlay(n => n + 1);
     setAuditKey(n => n + 1);
     if (schema) { refreshCounts(schema); refreshTitles(schema); }
@@ -156,7 +159,12 @@ export function App() {
           <span className="sub">迷你 Foundry · 本体 {schema.apiName}</span>
         </span>
         <span className="spacer" />
-        <RematerializeButton onDone={() => { setAuditKey(n => n + 1); if (schema) { refreshCounts(schema); refreshTitles(schema); } }} />
+        <RematerializeButton onDone={() => {
+          setLineageMode('materialize');
+          setLineagePlay(n => n + 1);
+          setAuditKey(n => n + 1);
+          if (schema) { refreshCounts(schema); refreshTitles(schema); }
+        }} />
         <span className="legend">
           <span title="semantic elements：对象/属性/链接——世界里'有什么'（企业的名词）"><span className="dot dot-semantic" />语义（名词）对象 {schema.objectTypes.length} · 链接 {schema.linkTypes.length}</span>
           <span title="kinetic elements：Action/Function——对世界'能做什么'（企业的动词）"><span className="dot dot-kinetic" />动能（动词）Action {schema.actionTypes.length} · Function {schema.functions.length}</span>
@@ -247,20 +255,21 @@ export function App() {
             <ActionPanel
               key={view.name + JSON.stringify(view.prefill ?? {})}
               schema={schema}
+              titles={titles}
               name={view.name}
               prefill={view.prefill}
               onDone={onActionDone}
             />
           )}
           {view.kind === 'fn' && (
-            <FunctionPanel key={view.name} schema={schema} name={view.name} prefill={view.prefill} onDone={onActionDone} />
+            <FunctionPanel key={view.name} schema={schema} titles={titles} name={view.name} prefill={view.prefill} onDone={onActionDone} />
           )}
         </main>
 
         <AuditRail refreshSignal={auditKey} schema={schema} titles={titles} onJump={(t, pk) => setView({ kind: 'detail', type: t, pk })} />
       </div>
 
-      <LineageBar play={lineagePlay} />
+      <LineageBar play={lineagePlay} mode={lineageMode} />
     </div>
   );
 }
@@ -490,8 +499,8 @@ function ObjectDetail({ schema, titles, type, pk, onBack, onJump, onAction, refr
 }
 
 /* ---------- Action 面板（schema 驱动动态表单） ---------- */
-function ActionPanel({ schema, name, prefill, onDone }: {
-  schema: SchemaView; name: string; prefill?: Record<string, Value>; onDone: () => void;
+function ActionPanel({ schema, titles, name, prefill, onDone }: {
+  schema: SchemaView; titles: TitleMap; name: string; prefill?: Record<string, Value>; onDone: () => void;
 }) {
   const action = schema.actionTypes.find(a => a.apiName === name)!;
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -530,6 +539,7 @@ function ActionPanel({ schema, name, prefill, onDone }: {
         <ParamField
           key={p.apiName}
           schema={schema}
+          titles={titles}
           param={p}
           value={values[p.apiName]}
           allValues={values}
@@ -583,8 +593,8 @@ function ActionPanel({ schema, name, prefill, onDone }: {
 }
 
 /* ---------- 参数渲染器：editor 元数据 → 下拉 / 对象搜索点选 / 条件构造器 ---------- */
-function ParamField({ schema, param, value, allValues, onChange }: {
-  schema: SchemaView; param: import('./api').ParamDef; value: string;
+function ParamField({ schema, titles, param, value, allValues, onChange }: {
+  schema: SchemaView; titles?: TitleMap; param: import('./api').ParamDef; value: string;
   allValues?: Record<string, string>; onChange: (v: string) => void;
 }) {
   // hint 元数据：另一参数选定对象后，实时取该对象的参考属性值，可一键填入
@@ -634,6 +644,36 @@ function ParamField({ schema, param, value, allValues, onChange }: {
           当前{hintLabel}：<b>{fmt(hintVal)}</b>（点击填入）
         </button>
       )}
+      {e?.kind === 'objectRef' && value && (
+        <RefPreview schema={schema} titles={titles ?? {}} objectType={e.objectType} pk={value} />
+      )}
+    </div>
+  );
+}
+
+/** objectRef 已选对象的当前内容预览——改研判看原文、处理预警看条件、调仓看行情，全 editor 通用。 */
+function RefPreview({ schema, titles, objectType, pk }: {
+  schema: SchemaView; titles: TitleMap; objectType: string; pk: string;
+}) {
+  const ot = schema.objectTypes.find(o => o.apiName === objectType)!;
+  const [row, setRow] = useState<ObjectRow | null>(null);
+  useEffect(() => {
+    let live = true;
+    api.object(objectType, pk).then(r => { if (live) setRow(r); }).catch(() => { if (live) setRow(null); });
+    return () => { live = false; };
+  }, [objectType, pk]);
+  if (!row) return null;
+  return (
+    <div className="ref-preview">
+      <div className="ref-preview-head">当前内容 · {ot.displayName} <span style={{ fontFamily: 'var(--mono)' }}>{pk}</span></div>
+      <div className="ref-preview-grid">
+        {ot.properties.filter(p => p.apiName !== ot.primaryKey).map(p => (
+          <span className="param-pair" key={p.apiName}>
+            <span className="param-label">{p.displayName}</span>
+            {renderCell(schema, titles, ot, p.apiName, row[p.apiName])}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -758,8 +798,8 @@ function FilterExprBuilder({ schema, objectType, value, onChange }: {
 }
 
 /* ---------- Function 运行面板 ---------- */
-function FunctionPanel({ schema, name, prefill, onDone }: {
-  schema: SchemaView; name: string; prefill?: Record<string, Value>; onDone?: () => void;
+function FunctionPanel({ schema, titles, name, prefill, onDone }: {
+  schema: SchemaView; titles: TitleMap; name: string; prefill?: Record<string, Value>; onDone?: () => void;
 }) {
   const fn = schema.functions.find(f => f.apiName === name)!;
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -819,7 +859,7 @@ function FunctionPanel({ schema, name, prefill, onDone }: {
       <div className="subtitle">Function——本体原生只读逻辑（算不做；要落地写入需经 Action）</div>
       {fn.docs && <div className="docs-note">{fn.docs}</div>}
       {fn.parameters.map(p => (
-        <ParamField key={p.apiName} schema={schema} param={p} value={values[p.apiName]} allValues={values} onChange={v => setValues(s => ({ ...s, [p.apiName]: v }))} />
+        <ParamField key={p.apiName} schema={schema} titles={titles} param={p} value={values[p.apiName]} allValues={values} onChange={v => setValues(s => ({ ...s, [p.apiName]: v }))} />
       ))}
       <div className="submit-row">
         <button className="btn-submit" onClick={run} disabled={busy}>{busy ? '计算中…' : '运行 Function'}</button>
@@ -843,21 +883,37 @@ function FunctionPanel({ schema, name, prefill, onDone }: {
   );
 }
 
-/** 通用结果展示：对象数组→表格（可挂行动作列）；对象→键值卡；其余→JSON。 */
+/* 数字展示：千分位；键名含 pnl 的红涨绿跌并带正号 */
+const fmtNum = (n: number): string =>
+  Number.isInteger(n) ? n.toLocaleString('zh-CN') : n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const isPnlKey = (k: string): boolean => k.toLowerCase().includes('pnl');
+const numCell = (k: string, v: number) => (
+  <span className={isPnlKey(k) ? (v >= 0 ? 'pnl-up' : 'pnl-down') : ''}>
+    {isPnlKey(k) && v > 0 ? '+' : ''}{fmtNum(v)}
+  </span>
+);
+
+/** 通用结果展示（纯形状驱动，不特判具体 Function）：
+ * 对象数组→表格（可挂行动作列）；对象→标量 KPI 卡 + 数组字段子表格；其余→JSON。 */
 function ResultView({ data, rowExtra }: {
   data: unknown; rowExtra?: (row: Record<string, Value>) => import('react').ReactNode;
 }) {
   if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
     const rows = data as Record<string, Value>[];
     const cols = Object.keys(rows[0]);
+    const hasExtra = rowExtra !== undefined && rows.some(r => rowExtra(r));
     return (
-      <table className="data-table" style={{ marginTop: 14 }}>
-        <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}{rowExtra && <th />}</tr></thead>
+      <table className="data-table" style={{ marginTop: 10 }}>
+        <thead><tr>{cols.map(c => <th key={c} className={typeof rows[0][c] === 'number' ? 'num' : ''}>{c}</th>)}{hasExtra && <th />}</tr></thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
-              {cols.map(c => <td key={c} className={typeof r[c] === 'number' ? 'num' : ''}>{r[c] === null ? '—' : String(r[c])}</td>)}
-              {rowExtra && <td className="row-action-cell">{rowExtra(r)}</td>}
+              {cols.map(c => (
+                <td key={c} className={typeof r[c] === 'number' ? 'num' : ''}>
+                  {r[c] === null ? '—' : typeof r[c] === 'number' ? numCell(c, r[c] as number) : String(r[c])}
+                </td>
+              ))}
+              {hasExtra && <td className="row-action-cell">{rowExtra!(r)}</td>}
             </tr>
           ))}
         </tbody>
@@ -865,6 +921,33 @@ function ResultView({ data, rowExtra }: {
     );
   }
   if (Array.isArray(data) && data.length === 0) return <div className="empty">（空结果）</div>;
+  if (data !== null && typeof data === 'object') {
+    const entries = Object.entries(data as Record<string, unknown>);
+    const scalars = entries.filter(([, v]) => v === null || ['string', 'number', 'boolean'].includes(typeof v));
+    const arrays = entries.filter(([, v]) => Array.isArray(v));
+    if (scalars.length > 0 || arrays.length > 0) {
+      return (
+        <div style={{ marginTop: 14 }}>
+          <div className="valuation-kpis">
+            {scalars.map(([k, v]) => (
+              <div className="kpi" key={k}>
+                <div className="label">{k}</div>
+                <div className="value" style={{ fontSize: typeof v === 'number' ? undefined : 14 }}>
+                  {v === null ? '—' : typeof v === 'number' ? numCell(k, v) : String(v)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {arrays.map(([k, v]) => (
+            <div key={k}>
+              <div className="section-label">{k}（{(v as unknown[]).length}）</div>
+              <ResultView data={v} rowExtra={rowExtra} />
+            </div>
+          ))}
+        </div>
+      );
+    }
+  }
   return <pre className="result-json">{JSON.stringify(data, null, 2)}</pre>;
 }
 
@@ -1073,36 +1156,44 @@ const LINEAGE_NODES = [
   { label: '审计', cls: 'kinetic', tip: '每个决策不可篡改留痕——右栏审计流' },
 ];
 
-function LineageBar({ play }: { play: number }) {
+function LineageBar({ play, mode }: { play: number; mode: 'action' | 'materialize' }) {
   const [lit, setLit] = useState(-1);
+  // 只点亮真实发生的半环，避免歧义：重物化=数据集→Funnel→本体；Action=本体→决策→写回→审计
+  const [start, end] = mode === 'materialize' ? [0, 2] : [2, LINEAGE_NODES.length - 1];
 
   useEffect(() => {
     if (play === 0) return;
-    let i = 2; // Action 触发的闭环从"本体"起步点亮到审计
+    let i = start;
     setLit(i);
     const t = setInterval(() => {
       i += 1;
-      if (i >= LINEAGE_NODES.length) {
+      if (i > end) {
         clearInterval(t);
         setTimeout(() => setLit(-1), 1600);
       } else {
         setLit(i);
       }
-    }, 220);
+    }, 240);
     return () => clearInterval(t);
-  }, [play]);
+  }, [play, start, end]);
 
   return (
     <footer className="lineage-bar">
       <span className="lineage-title">CLOSED LOOP</span>
-      {LINEAGE_NODES.map((n, i) => (
-        <span key={n.label} style={{ display: 'contents' }}>
-          {i > 0 && <span className="lineage-arrow">→</span>}
-          <span title={n.tip} className={`lineage-node ${n.cls} ${lit >= 0 && i <= lit && i >= 2 ? 'lit' : ''}`}>
-            <span className="ring" />{n.label}
+      {LINEAGE_NODES.map((n, i) => {
+        const nodeLit = lit >= 0 && i >= start && i <= lit;
+        const arrowFlowing = lit >= 0 && i > start && i <= lit; // 箭头 i 连接节点 i-1 → i
+        return (
+          <span key={n.label} style={{ display: 'contents' }}>
+            {i > 0 && (
+              <span className={`lineage-arrow ${arrowFlowing ? `flowing ${mode === 'materialize' ? 'semantic-flow' : ''}` : ''}`}>→</span>
+            )}
+            <span title={n.tip} className={`lineage-node ${n.cls} ${nodeLit ? 'lit' : ''}`}>
+              <span className="ring" />{n.label}
+            </span>
           </span>
-        </span>
-      ))}
+        );
+      })}
     </footer>
   );
 }

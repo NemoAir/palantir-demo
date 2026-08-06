@@ -285,6 +285,24 @@ input, select { font: inherit; }
   color: var(--text); margin-bottom: 14px;
 }
 
+/* 批J：血缘分段流动动画 */
+.lineage-arrow { display: inline-block; }
+.lineage-arrow.flowing { color: var(--kinetic); animation: arrow-flow 0.55s ease-in-out infinite; }
+.lineage-arrow.flowing.semantic-flow { color: var(--semantic); }
+@keyframes arrow-flow {
+  0%, 100% { transform: translateX(-2px); opacity: 0.45; }
+  50% { transform: translateX(2px); opacity: 1; }
+}
+.lineage-node.lit.semantic .ring { background: var(--semantic); border-color: var(--semantic); box-shadow: 0 0 8px rgba(91, 141, 239, 0.8); }
+
+/* 批M：objectRef 已选对象预览卡 */
+.ref-preview {
+  margin-top: 6px; background: var(--panel-2); border: 1px solid var(--line);
+  border-left: 2px solid var(--semantic); border-radius: 5px; padding: 8px 11px;
+}
+.ref-preview-head { color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+.ref-preview-grid { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; }
+
 /* 批H：系统动词收紧 + 结果行一键落账 */
 .system-note {
   background: rgba(232, 179, 60, 0.07); border: 1px solid rgba(232, 179, 60, 0.3);
