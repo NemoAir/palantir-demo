@@ -66,7 +66,7 @@ export class ActionService {
     // 4. side effects（提交成功后执行；只落表不真推送——spec §6）
     const effects = action.sideEffects?.(ctx, params, edits) ?? [];
     for (const e of effects) {
-      if (e.kind === 'notification') this.store.addNotification(e.message);
+      if (e.kind === 'notification') this.store.addNotification(e.message, e.link);
     }
     return { ok: true, edits, sideEffects: effects };
   }

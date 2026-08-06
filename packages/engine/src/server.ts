@@ -4,6 +4,7 @@ import type { ObjectStore } from './store.js';
 import { ObjectSetService } from './oss.js';
 import { ActionService } from './actions.js';
 import { FunctionService } from './functions.js';
+import { materializeAll } from './funnel.js';
 import { parseFilterExpr } from './filter-parse.js';
 import type { Value } from './types.js';
 
@@ -11,7 +12,7 @@ import type { Value } from './types.js';
  * 题材无关的 REST API（node:http 零依赖）。
  * 元数据驱动：路由里的类型/动作/函数名运行时经 OMS 白名单解析，未注册即 400。
  */
-export function createApiServer(store: ObjectStore): http.Server {
+export function createApiServer(store: ObjectStore, opts: { datasetsDir?: string } = {}): http.Server {
   const oss = new ObjectSetService(store);
   const actions = new ActionService(store);
   const fns = new FunctionService(store);
@@ -114,6 +115,12 @@ export function createApiServer(store: ObjectStore): http.Server {
       if (req.method === 'POST' && parts[1] === 'functions' && parts.length === 3) {
         const body = await readBody(req);
         return json(res, 200, fns.call(parts[2], body.params ?? {}));
+      }
+
+      // POST /api/materialize —— 重新物化本地数据集（不联网；编辑经账本重放保留）
+      if (req.method === 'POST' && parts[1] === 'materialize' && parts.length === 2) {
+        if (!opts.datasetsDir) return json(res, 404, { error: 'materialize not enabled (no datasetsDir)' });
+        return json(res, 200, materializeAll(store, opts.datasetsDir));
       }
 
       // GET /api/audit?limit= / GET /api/notifications

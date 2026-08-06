@@ -42,7 +42,11 @@ export const astockActions: ActionTypeDef[] = [
         values: { id, name: String(p.name).trim(), initialCash: p.initialCash, cash: p.initialCash },
       }];
     },
-    sideEffects: (_ctx, p) => [{ kind: 'notification', message: `已新建组合「${String(p.name).trim()}」` }],
+    sideEffects: (_ctx, p, edits) => [{
+      kind: 'notification',
+      message: `已新建组合「${String(p.name).trim()}」`,
+      link: { objectType: 'Portfolio', pk: edits[0].pk },
+    }],
   },
   {
     apiName: 'updateResearchNote',
@@ -88,7 +92,11 @@ export const astockActions: ActionTypeDef[] = [
       { kind: 'set', objectType: 'Stock', pk: p.stockCode as string, property: 'isWatched', value: true },
     ],
     sideEffects: (ctx, p) => [
-      { kind: 'notification', message: `已将 ${ctx.get('Stock', p.stockCode as string)?.name}(${p.stockCode}) 加入自选` },
+      {
+        kind: 'notification',
+        message: `已将 ${ctx.get('Stock', p.stockCode as string)?.name}(${p.stockCode}) 加入自选`,
+        link: { objectType: 'Stock', pk: p.stockCode as string },
+      },
     ],
   },
   {
@@ -176,6 +184,7 @@ export const astockActions: ActionTypeDef[] = [
       {
         kind: 'notification',
         message: `${p.side === 'buy' ? '买入' : '卖出'} ${ctx.get('Stock', p.stockCode as string)?.name}(${p.stockCode}) ${p.quantity}股 @ ${p.price}`,
+        link: { objectType: 'Stock', pk: p.stockCode as string },
       },
     ],
   },
@@ -260,7 +269,7 @@ export const astockActions: ActionTypeDef[] = [
     apply: (_ctx, p): Edit[] => [
       { kind: 'set', objectType: 'Alert', pk: p.alertId as string, property: 'status', value: 'resolved' },
     ],
-    sideEffects: (_ctx, p) => [{ kind: 'notification', message: `预警 ${p.alertId} 已处理` }],
+    sideEffects: (_ctx, p) => [{ kind: 'notification', message: `预警 ${p.alertId} 已处理`, link: { objectType: 'Alert', pk: p.alertId as string } }],
   },
   {
     // 系统 Action：由 checkAlerts 的调用方（自动化/AI）触发，
@@ -292,7 +301,7 @@ export const astockActions: ActionTypeDef[] = [
     ],
     sideEffects: (ctx, p) => {
       const alert = ctx.get('Alert', p.alertId as string)!;
-      return [{ kind: 'notification', message: `预警触发：${alert.stockCode} 满足 ${alert.condition}` }];
+      return [{ kind: 'notification', message: `预警触发：${alert.stockCode} 满足 ${alert.condition}`, link: { objectType: 'Alert', pk: p.alertId as string } }];
     },
   },
 ];

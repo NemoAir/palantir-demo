@@ -105,5 +105,10 @@ export const api = {
   action: (name: string, params: Record<string, Value>) => post<ActionResult>(`/api/actions/${name}`, { params }),
   fn: (name: string, params: Record<string, Value>) => post<unknown>(`/api/functions/${name}`, { params }),
   audit: (limit = 30) => get<AuditRecord[]>(`/api/audit?limit=${limit}`),
-  notifications: (limit = 30) => get<{ id: number; message: string; at: string }[]>(`/api/notifications?limit=${limit}`),
+  notifications: (limit = 30) =>
+    get<{ id: number; message: string; at: string; link?: { objectType: string; pk: Value } }[]>(`/api/notifications?limit=${limit}`),
+  materialize: () =>
+    post<{ objectType: string; totalRows: number; inserted: number; updated: number; skipped: unknown[]; nulled: unknown[] }[]>(
+      '/api/materialize', {},
+    ),
 };

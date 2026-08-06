@@ -242,6 +242,19 @@ input, select { font: inherit; }
   padding: 12px; font-family: var(--mono); font-size: 12px; overflow-x: auto; white-space: pre-wrap;
 }
 
+/* 批D */
+.remat { display: flex; align-items: center; gap: 8px; }
+.remat-btn {
+  border: 1px solid var(--line); color: var(--muted); font-size: 12px;
+  padding: 4px 10px; border-radius: 4px;
+}
+.remat-btn:hover { color: var(--semantic); border-color: var(--semantic); }
+.remat-btn:disabled { opacity: 0.5; }
+.remat-msg { color: var(--down); font-size: 11px; }
+.notif-item.linked { cursor: pointer; }
+.notif-item.linked:hover { color: var(--kinetic); }
+.notif-arrow { color: var(--kinetic); }
+
 /* 空态 */
 .empty { color: var(--muted); padding: 30px 0; text-align: center; }
 .error-banner {

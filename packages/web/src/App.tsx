@@ -90,6 +90,7 @@ export function App() {
           <span className="sub">迷你 Foundry · 本体 {schema.apiName}</span>
         </span>
         <span className="spacer" />
+        <RematerializeButton onDone={() => { setAuditKey(n => n + 1); if (schema) refreshCounts(schema); }} />
         <span className="legend">
           <span title="semantic elements：对象/属性/链接——世界里'有什么'（企业的名词）"><span className="dot dot-semantic" />语义（名词）对象 {schema.objectTypes.length} · 链接 {schema.linkTypes.length}</span>
           <span title="kinetic elements：Action/Function——对世界'能做什么'（企业的动词）"><span className="dot dot-kinetic" />动能（动词）Action {schema.actionTypes.length} · Function {schema.functions.length}</span>
@@ -181,7 +182,7 @@ export function App() {
           )}
         </main>
 
-        <AuditRail refreshSignal={auditKey} schema={schema} />
+        <AuditRail refreshSignal={auditKey} schema={schema} onJump={(t, pk) => setView({ kind: 'detail', type: t, pk })} />
       </div>
 
       <LineageBar play={lineagePlay} />
@@ -692,9 +693,45 @@ function ResultView({ data }: { data: unknown }) {
 const fmtTime = (iso: string): string =>
   new Date(iso).toLocaleString('zh-CN', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-function AuditRail({ refreshSignal, schema }: { refreshSignal: number; schema: SchemaView }) {
+/** 顶栏：重新物化数据集（只处理本地 CSV，不联网拉新行情——拉行情走对话让 Claude 重取）。 */
+function RematerializeButton({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const run = async () => {
+    setBusy(true);
+    try {
+      const reports = await api.materialize();
+      const total = reports.reduce((s, r) => s + r.inserted + r.updated, 0);
+      const nulled = reports.reduce((s, r) => s + r.nulled.length, 0);
+      setMsg(`已物化 ${total} 对象（置空 ${nulled}），编辑已重放保留`);
+      onDone();
+    } catch (e) {
+      setMsg(`失败：${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+      setTimeout(() => setMsg(''), 6000);
+    }
+  };
+  return (
+    <span className="remat">
+      <button
+        className="remat-btn"
+        title="重新物化 datasets/*.csv（Funnel 重跑 + 编辑账本重放）。不联网：要拉最新行情，请在对话里让 Claude 重取数据"
+        onClick={run}
+        disabled={busy}
+      >
+        {busy ? '物化中…' : '⟳ 重新物化数据集'}
+      </button>
+      {msg && <span className="remat-msg">{msg}</span>}
+    </span>
+  );
+}
+
+function AuditRail({ refreshSignal, schema, onJump }: {
+  refreshSignal: number; schema: SchemaView; onJump: (type: string, pk: Value) => void;
+}) {
   const [audit, setAudit] = useState<AuditRecord[]>([]);
-  const [notifs, setNotifs] = useState<{ id: number; message: string; at: string }[]>([]);
+  const [notifs, setNotifs] = useState<{ id: number; message: string; at: string; link?: { objectType: string; pk: Value } }[]>([]);
   const lastTop = useRef<number>(0);
   const actionMeta = useMemo(() => new Map(schema.actionTypes.map(a => [a.apiName, a])), [schema]);
 
@@ -742,8 +779,11 @@ function AuditRail({ refreshSignal, schema }: { refreshSignal: number; schema: S
       ))}
       <div className="rail-title" style={{ marginTop: 18 }}>通知 NOTIFICATIONS</div>
       {notifs.map(n => (
-        <div className="notif-item" key={n.id}>
-          <div>{n.message}</div>
+        <div className={`notif-item ${n.link ? 'linked' : ''}`} key={n.id}
+          onClick={n.link ? () => onJump(n.link!.objectType, n.link!.pk) : undefined}
+          title={n.link ? `点击查看 ${n.link.objectType}/${n.link.pk}` : undefined}
+        >
+          <div>{n.message}{n.link && <span className="notif-arrow"> →</span>}</div>
           <div className="time-full">{fmtTime(n.at)}</div>
         </div>
       ))}

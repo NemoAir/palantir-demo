@@ -69,6 +69,8 @@ export type Edit =
 export interface SideEffect {
   kind: 'notification';
   message: string;
+  /** 可选：通知关联的对象（消费端可据此提供点击直达）。 */
+  link?: { objectType: string; pk: string | number };
 }
 
 /** 提供给 criteria/apply/function 的只读上下文（读走合并后的物化态）。 */

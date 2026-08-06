@@ -78,6 +78,12 @@ export class ObjectStore {
       message TEXT NOT NULL,
       at TEXT NOT NULL
     )`);
+    // 轻量迁移：旧库补 link_json 列（重复执行会报"duplicate column"，忽略即可）
+    try {
+      this.db.exec(`ALTER TABLE notifications ADD COLUMN link_json TEXT`);
+    } catch {
+      /* 列已存在 */
+    }
   }
 
   /**
@@ -165,14 +171,20 @@ export class ObjectStore {
     }));
   }
 
-  addNotification(message: string): void {
-    this.db.prepare(`INSERT INTO notifications (message, at) VALUES (?, ?)`).run(message, new Date().toISOString());
+  addNotification(message: string, link?: { objectType: string; pk: string | number }): void {
+    this.db
+      .prepare(`INSERT INTO notifications (message, at, link_json) VALUES (?, ?, ?)`)
+      .run(message, new Date().toISOString(), link ? JSON.stringify(link) : null);
   }
 
-  listNotifications(limit = 50): { id: number; message: string; at: string }[] {
-    return this.db
+  listNotifications(limit = 50): { id: number; message: string; at: string; link?: { objectType: string; pk: string | number } }[] {
+    const rows = this.db
       .prepare(`SELECT * FROM notifications ORDER BY id DESC LIMIT ?`)
-      .all(limit) as { id: number; message: string; at: string }[];
+      .all(limit) as { id: number; message: string; at: string; link_json: string | null }[];
+    return rows.map(r => ({
+      id: r.id, message: r.message, at: r.at,
+      ...(r.link_json ? { link: JSON.parse(r.link_json) as { objectType: string; pk: string | number } } : {}),
+    }));
   }
 
   /** 完整行校验 + INSERT（供 create 编辑与重放复用）。 */
