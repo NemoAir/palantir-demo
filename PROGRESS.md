@@ -1,7 +1,7 @@
 # PROGRESS — palantir-demo（Palantir 本体论学习与实战）
 
 ## 当前焦点
-🏁 M1–M5 + 迭代批 A–E + 第二轮迭代批 F–I 完成（2026-08-06 晚）。批F 概念地图/docs 元数据/导航分组抽屉；批G 引用可读化（titleProperty/enumOptions/format/hint 四项元模型扩展——外键翻名/状态徽章/条件中文化/最新价提示/过滤值建议）；批H 研判可命名（本体演进实证）+ init 自动补列迁移（真实坑补机制）+ 系统动词收紧 + 扫描结果一键落账；批I 活系统（headless claude -p 实跑验证零 API key 链路 + daily-patrol.sh + launchd 模板）。77 测试全绿，浏览器实操验收全过（`docs/acceptance/iter-fghi-evidence.md`）。
+🏁 M1–M5 + 迭代批 A–O 三轮全部完成（2026-08-06 深夜）。第三轮批J–O：血缘分段动画、决策活动页（offset 分页）、概念页+SQLite 数据流图、objectRef 预览卡、Function 结果 KPI 化、**Web AI 对话入口**（chat-bridge 双驱动：无 key→本机 claude CLI 订阅 / 有 ANTHROPIC_API_KEY→SDK runloop，curl 实测 2 次全通）、根 README（本体论思考 8 条+架构图，为 public 就绪、全仓无求职表述）。77 测试全绿。本会话另实证 MCP 链条（RN-5 写入+审计 #23）。
 
 ## 全景任务清单
 - ✅ ① 调研 Palantir Ontology（139 论断 → 25 条对抗验证 75 票 0 反对 → 9 组 high 置信发现；骨架页亲验；报告 `docs/ontology-research.md`）
@@ -15,7 +15,7 @@
 - ✅ ⑨ M5 MCP：ai-tools（题材无关 OAG 核心，engine 测试覆盖）+ MCP 薄壳 + .mcp.json——14 工具 stdio 冒烟全通（`docs/acceptance/m5-evidence.md`）
 - ✅ ⑩ 迭代批 A–E（第一轮反馈 11+10 条）：UI 修正/editor 元模型/新动词/通知与重物化/api-agent 示例——git 0ee700a..1d6f3b8
 - ✅ ⑪ 迭代批 F–I（第二轮反馈 15 条）：概念自解释/引用可读化（titleProperty 等四元数据）/本体演进+自动迁移/活系统 claude -p 实跑——`docs/acceptance/iter-fghi-evidence.md`
-- 🔄 ⑫ 迭代批 J–N（第三轮反馈 7 条）：血缘分段动画/审计通知分页页/概念页+数据流图/引用预览卡/Function 结果友好化 + MCP 链条演示
+- ✅ ⑫ 迭代批 J–O（第三轮反馈 9 条）：血缘分段动画/决策活动页(分页)/概念页+数据流图/引用预览卡/Function 结果友好化/Web AI 对话入口(双驱动桥实测)/根 README——`docs/acceptance/iter-jko-evidence.md`
 
 ## 关键决策与依据（全记录见 spec §2）
 - 技术栈：TypeScript 全栈（Node 引擎 + React UI + SQLite）——用户为 iOS 开发者，TS 与 Swift 类型系统同构；与 OSDK 官方语言一致。
