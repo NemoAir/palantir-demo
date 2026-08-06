@@ -9,7 +9,7 @@
 
 ## 跑起来
 
-前置：Node.js ≥ 20、pnpm ≥ 9。三条命令，不需要任何数据库服务或密钥：
+前置：Node.js ≥ 20、pnpm ≥ 9，macOS / Linux / Windows 均可。三条命令，不需要任何数据库服务或密钥：
 
 ```bash
 pnpm install                # 依赖（better-sqlite3 会自动构建）
@@ -41,6 +41,8 @@ AI 的写入和人点表单走的是同一条治理管线（前提校验 → 原
 
 密钥只存在环境变量或本机登录态里，仓库里一个都没有。对话支持多轮追问（会话延续），
 每轮回复末尾可以展开原始请求/响应 JSON——我自己调试时就靠它看数据到底长什么样。
+（Windows 原生环境建议直接走 API key 这条路；CLI 驱动在 Windows 下推荐 WSL。
+SDK 直连 Anthropic 需要网络可达，必要时配 HTTPS_PROXY。）
 
 顺带一提：用 Claude Code 打开本仓库会自动连上 `.mcp.json` 里的本体 MCP server，
 在编辑器对话里也能直接查询、执行 Action——和网页入口是同一套工具、同一条管线。
