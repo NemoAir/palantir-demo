@@ -50,3 +50,21 @@
 - ChatDock 的浏览器内实际发送未走全程（后端链路已 curl 实测 2 次；UI 侧渲染/示例/输入均已验证）——用户点一条示例即可完成端到端首验，耗订阅额度。
 - API 驱动（ANTHROPIC_API_KEY 路径）未实跑（本机无 key，逻辑与 api-agent.ts 同构且 tsc 通过）。
 - 血缘流动动画为瞬态（截图难留证）：CSS keyframes + 分段类名逻辑经代码与类名核验，用户提交任一 Action 即可肉眼验证。
+
+---
+
+# 补充：迭代批 P/Q（2026-08-06 深夜 · 第四轮反馈 3 条）
+
+## 批P Function 结果中文化
+- FunctionDef.resultLabels 元数据 + 三级回退（resultLabels→属性词典→原文）。
+- 浏览器实测：估值 KPI 全中文（组合ID/名称/现金/持仓市值/总资产/浮动盈亏）、"持仓明细（2）"小节、表头中文。
+
+## 批Q chat 桥收紧 + 多轮（用户实测抓出的真实缺陷）
+- 缺陷现象（用户截图）：子会话继承本机开发环境——跑 warm-up、用 Bash/Read/CLI 而非本体工具，与 api 驱动行为不一致。
+- 修复四件套：--strict-mcp-config / --disallowedTools（禁内置工具）/ --append-system-prompt（操作员身份）/ --settings disableAllHooks（隔离本机 hooks；实测 {"hooks":{}} 合并语义无效、disableAllHooks 有效）。
+- 解析修正：user 消息中 harness 注入文本不再误收；final 空时取最后助手文本兜底。
+- 多轮：conversationId（cli=claude --resume；api=桥内 Map，进程内存态）。
+- 实测：轮1 只调 fn_portfolioValuation、final 纯净；轮2 代词追问"它有几笔持仓"零工具调用凭记忆答对（华海清科 500 股+中微公司 1000 股）。
+- 前端：新对话按钮/每轮原始报文折叠/空态数据路径说明/工具名去前缀。
+
+诚实边界：api 驱动（ANTHROPIC_API_KEY）路径仍未实跑（无 key；与 cli 驱动同构、tsc 通过）；api 驱动多轮为进程内存态（serve 重启即清），cli 驱动 session 由 claude 持久化。
