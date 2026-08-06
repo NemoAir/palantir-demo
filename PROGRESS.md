@@ -13,6 +13,9 @@
 - ✅ ⑦ M3 Toolchain：codegen（类型化 OSDK+编译期三防线）+ HTTP API（题材无关 REST）——63 测试全绿（`docs/acceptance/m3-evidence.md`）
 - ✅ ⑧ M4 Web UI：三栏运营台（对象浏览器/详情链接遍历/Action 动态表单/审计流/闭环血缘条）——浏览器实操验收 4/4（`docs/acceptance/m4-evidence.md`，观感待用户终审）
 - ✅ ⑨ M5 MCP：ai-tools（题材无关 OAG 核心，engine 测试覆盖）+ MCP 薄壳 + .mcp.json——14 工具 stdio 冒烟全通（`docs/acceptance/m5-evidence.md`）
+- ✅ ⑩ 迭代批 A–E（第一轮反馈 11+10 条）：UI 修正/editor 元模型/新动词/通知与重物化/api-agent 示例——git 0ee700a..1d6f3b8
+- ✅ ⑪ 迭代批 F–I（第二轮反馈 15 条）：概念自解释/引用可读化（titleProperty 等四元数据）/本体演进+自动迁移/活系统 claude -p 实跑——`docs/acceptance/iter-fghi-evidence.md`
+- 🔄 ⑫ 迭代批 J–N（第三轮反馈 7 条）：血缘分段动画/审计通知分页页/概念页+数据流图/引用预览卡/Function 结果友好化 + MCP 链条演示
 
 ## 关键决策与依据（全记录见 spec §2）
 - 技术栈：TypeScript 全栈（Node 引擎 + React UI + SQLite）——用户为 iOS 开发者，TS 与 Swift 类型系统同构；与 OSDK 官方语言一致。
