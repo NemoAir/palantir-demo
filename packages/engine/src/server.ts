@@ -12,7 +12,14 @@ import type { Value } from './types.js';
  * 题材无关的 REST API（node:http 零依赖）。
  * 元数据驱动：路由里的类型/动作/函数名运行时经 OMS 白名单解析，未注册即 400。
  */
-export function createApiServer(store: ObjectStore, opts: { datasetsDir?: string } = {}): http.Server {
+export function createApiServer(
+  store: ObjectStore,
+  opts: {
+    datasetsDir?: string;
+    /** 可选对话处理器（由部署层注入，如 chat-bridge）：POST /api/chat { prompt } → 结果透传。 */
+    chat?: (prompt: string) => Promise<unknown>;
+  } = {},
+): http.Server {
   const oss = new ObjectSetService(store);
   const actions = new ActionService(store);
   const fns = new FunctionService(store);
@@ -43,7 +50,7 @@ export function createApiServer(store: ObjectStore, opts: { datasetsDir?: string
     res.end(JSON.stringify(body));
   };
 
-  const readBody = (req: http.IncomingMessage): Promise<{ params?: Record<string, Value> }> =>
+  const readBody = (req: http.IncomingMessage): Promise<{ params?: Record<string, Value>; prompt?: string }> =>
     new Promise((resolve, reject) => {
       let data = '';
       req.on('data', c => (data += c));
@@ -116,6 +123,15 @@ export function createApiServer(store: ObjectStore, opts: { datasetsDir?: string
       if (req.method === 'POST' && parts[1] === 'functions' && parts.length === 3) {
         const body = await readBody(req);
         return json(res, 200, fns.call(parts[2], body.params ?? {}));
+      }
+
+      // POST /api/chat { prompt } —— 对话桥（部署层注入；未启用即 404）
+      if (req.method === 'POST' && parts[1] === 'chat' && parts.length === 2) {
+        if (!opts.chat) return json(res, 404, { error: 'chat not enabled' });
+        const body = await readBody(req);
+        const prompt = String(body.prompt ?? '').trim();
+        if (!prompt) return json(res, 400, { error: 'prompt required' });
+        return json(res, 200, await opts.chat(prompt));
       }
 
       // POST /api/materialize —— 重新物化本地数据集（不联网；编辑经账本重放保留）

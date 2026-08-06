@@ -119,4 +119,15 @@ export const api = {
     post<{ objectType: string; totalRows: number; inserted: number; updated: number; skipped: unknown[]; nulled: unknown[] }[]>(
       '/api/materialize', {},
     ),
+  chat: (prompt: string) => post<ChatResult>('/api/chat', { prompt }),
 };
+
+export interface ChatEvent {
+  kind: 'text' | 'tool_use' | 'tool_result';
+  text?: string;
+  tool?: string;
+  input?: unknown;
+  output?: string;
+  isError?: boolean;
+}
+export interface ChatResult { driver: 'api' | 'claude-cli'; events: ChatEvent[]; final: string; }

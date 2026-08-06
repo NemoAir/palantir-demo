@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  api, type ActionResult, type ActionTypeView, type AuditRecord, type ObjectRow,
+  api, type ActionResult, type ActionTypeView, type AuditRecord, type ChatResult, type ObjectRow,
   type ObjectTypeDef, type SchemaView, type Value,
 } from './api';
 
@@ -302,7 +302,117 @@ export function App() {
         />
       </div>
 
+      <ChatDock onDone={onActionDone} />
       <LineageBar play={lineagePlay} mode={lineageMode} />
+    </div>
+  );
+}
+
+/* ---------- AI 对话入口：一句话操作本体（后端桥自动选驱动：claude CLI 订阅 / API key） ---------- */
+const CHAT_EXAMPLES = [
+  '组合 P1 现在值多少钱？总结一下持仓盈亏。',
+  '扫描一遍预警，把命中的标记为触发。',
+  '筛出 PE 低于 50 且总市值大于 500 亿的股票。',
+  '给持仓市值最大的股票写一条中性研判，标题「AI 巡检」。',
+];
+
+function ChatDock({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [turns, setTurns] = useState<{ prompt: string; result?: ChatResult }[]>([]);
+  const [driver, setDriver] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const send = async (raw?: string) => {
+    const prompt = (raw ?? input).trim();
+    if (!prompt || busy) return;
+    setErr(null); setBusy(true); setInput('');
+    setTurns(t => [...t, { prompt }]);
+    try {
+      const r = await api.chat(prompt);
+      setDriver(r.driver);
+      setTurns(t => t.map((x, i) => (i === t.length - 1 ? { ...x, result: r } : x)));
+      const wrote = r.events.some(e => e.kind === 'tool_use' && (e.tool ?? '').includes('action_'));
+      if (wrote) onDone(); // AI 写入同样点亮闭环血缘并刷新全局
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+      setTimeout(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }), 50);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button className="chat-fab" onClick={() => setOpen(true)} title="用一句话让 AI 操作本体（查询/计算/经治理管线写入）">
+        ◆ AI 助手
+      </button>
+    );
+  }
+  return (
+    <div className="chat-dock">
+      <div className="chat-head">
+        <span className="chat-title">◆ AI 助手 · 直接操作本体</span>
+        {driver && (
+          <span className="chat-driver" title="后端桥自动选择：有 ANTHROPIC_API_KEY 走 SDK，否则走本机 Claude Code（订阅）">
+            {driver === 'claude-cli' ? 'Claude Code · 订阅' : 'Anthropic API'}
+          </span>
+        )}
+        <button className="concept-close" onClick={() => setOpen(false)}>✕</button>
+      </div>
+      <div className="chat-list" ref={listRef}>
+        {turns.length === 0 && (
+          <div className="chat-empty">
+            <div className="subtitle" style={{ marginBottom: 8 }}>
+              它拿到的是本体的全部工具（查询 / Function / Action）——写入照走治理管线并留审计。试试：
+            </div>
+            {CHAT_EXAMPLES.map(ex => (
+              <button key={ex} className="chat-example" onClick={() => send(ex)}>{ex}</button>
+            ))}
+          </div>
+        )}
+        {turns.map((t, i) => (
+          <div key={i}>
+            <div className="chat-user">{t.prompt}</div>
+            {t.result ? (
+              <div className="chat-assistant">
+                {t.result.events.map((e, j) => (
+                  e.kind === 'text' ? (
+                    <div className="chat-text" key={j}>{e.text}</div>
+                  ) : e.kind === 'tool_use' ? (
+                    <details className="chat-tool" key={j}>
+                      <summary>⚙ {e.tool}</summary>
+                      <pre>{JSON.stringify(e.input, null, 2)}</pre>
+                    </details>
+                  ) : (
+                    <details className={`chat-tool result ${e.isError ? 'error' : ''}`} key={j}>
+                      <summary>{e.isError ? '✕ 出错' : '↳ 返回'}{e.tool ? ` · ${e.tool}` : ''}</summary>
+                      <pre>{e.output}</pre>
+                    </details>
+                  )
+                ))}
+              </div>
+            ) : (
+              <div className="chat-assistant"><span className="chat-busy">Claude 正在操作本体…（首次可能要几十秒）</span></div>
+            )}
+          </div>
+        ))}
+        {err && <div className="error-banner">{err}</div>}
+      </div>
+      <div className="chat-input-row">
+        <textarea
+          value={input}
+          rows={2}
+          placeholder="一句话任务，如：查 P1 估值并总结"
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+        />
+        <button className="btn-submit" disabled={busy || !input.trim()} onClick={() => send()}>
+          {busy ? '…' : '发送'}
+        </button>
+      </div>
     </div>
   );
 }

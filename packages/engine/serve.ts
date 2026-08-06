@@ -4,11 +4,16 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { openStore } from './src/open.js';
 import { createApiServer } from './src/server.js';
+import { runChat, chatDriver } from './chat-bridge.js';
 import { astock } from '../../ontology/astock.ontology.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const store = openStore(astock, join(root, 'ontology.db'));
 const port = Number(process.env.PORT ?? 4177);
-createApiServer(store, { datasetsDir: join(root, 'datasets') }).listen(port, () => {
-  console.log(`astock 本体 API: http://localhost:${port}/api/schema`);
+createApiServer(store, {
+  datasetsDir: join(root, 'datasets'),
+  // Web 对话入口：驱动自动选择（有 ANTHROPIC_API_KEY 走 SDK，否则走本机 claude CLI 订阅）
+  chat: prompt => runChat(store, prompt, { mcpServerName: 'astock-ontology' }),
+}).listen(port, () => {
+  console.log(`astock 本体 API: http://localhost:${port}/api/schema（chat 驱动：${chatDriver()}）`);
 });

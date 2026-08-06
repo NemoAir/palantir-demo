@@ -9,6 +9,7 @@
     "cli.ts",
     "generate-osdk.ts",
     "serve.ts",
+    "chat-bridge.ts",
     "../../ontology/**/*",
     "../../osdk/**/*",
     "../../examples/**/*"
