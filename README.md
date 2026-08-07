@@ -1,6 +1,6 @@
 # palantir-demo — 用 A 股投研台复刻 Palantir 的 Ontology
 
-我平时主要写 iOS。前段时间看 Palantir 的资料，它反复在讲一个词：Ontology（本体）。
+前段时间看 Palantir 的资料，它反复在讲一个词：Ontology（本体）。
 文档读了不少还是觉得隔着一层，索性用 TypeScript 从零造了一个最小可用的版本——
 数据用科创板 50 的真实行情，做成一个能查、能算、能模拟调仓、能审计的投研运营台。
 
