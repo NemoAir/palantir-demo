@@ -6,7 +6,7 @@ import { astockFunctions } from './astock.functions.js';
  * A股投研运营台本体 v1（语义层 + 动能层）。
  * 数据域：科创板50 成分股。
  * 语义元素：6 对象类型 + 5 链接类型（企业的"名词"）；
- * 动能元素：6 Action + 3 Function（企业的"动词"，见 astock.actions/functions）。
+ * 动能元素：8 Action + 3 Function（企业的"动词"，见 astock.actions/functions）。
  */
 export const astock = defineOntology({
   apiName: 'astock',

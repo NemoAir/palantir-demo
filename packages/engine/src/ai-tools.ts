@@ -66,7 +66,7 @@ export function buildTools(store: ObjectStore): {
     },
     {
       name: 'traverse_link',
-      description: `沿链接遍历相关对象（如 Stock 的 industry/positions/researchNotes/alerts）。`,
+      description: `沿链接遍历相关对象。type 可选：${typeNames}；可用遍历名见 schema 的链接定义。`,
       inputSchema: {
         type: 'object',
         properties: {

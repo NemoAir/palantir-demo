@@ -46,6 +46,7 @@ export interface Position {
 /** 研判笔记 */
 export interface ResearchNote {
   id: string;
+  title: string | null;
   stockCode: string;
   stance: string;
   reason: string;
@@ -82,9 +83,9 @@ export type PositionFilter =
 export interface PositionQueryOptions { orderBy?: 'id' | 'portfolioId' | 'stockCode' | 'quantity' | 'costPrice'; desc?: boolean; limit?: number; }
 
 export type ResearchNoteFilter =
-  | { property: 'id' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
-  | { property: 'id' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; op: 'isNull' | 'notNull' };
-export interface ResearchNoteQueryOptions { orderBy?: 'id' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; desc?: boolean; limit?: number; }
+  | { property: 'id' | 'title' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
+  | { property: 'id' | 'title' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; op: 'isNull' | 'notNull' };
+export interface ResearchNoteQueryOptions { orderBy?: 'id' | 'title' | 'stockCode' | 'stance' | 'reason' | 'createdAt'; desc?: boolean; limit?: number; }
 
 export type AlertFilter =
   | { property: 'id' | 'stockCode' | 'condition' | 'status' | 'createdAt'; op: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'contains'; value: string | number | boolean }
@@ -117,6 +118,20 @@ function decodeAlert(row: ObjectRow): Alert {
   return row as unknown as Alert;
 }
 
+/** 新建组合 的参数 */
+export interface CreatePortfolioParams {
+  name: string;
+  initialCash: number;
+}
+
+/** 改研判 的参数 */
+export interface UpdateResearchNoteParams {
+  noteId: string;
+  title?: string;
+  stance?: string;
+  reason?: string;
+}
+
 /** 加自选 的参数 */
 export interface AddToWatchlistParams {
   stockCode: string;
@@ -134,6 +149,7 @@ export interface TradeStockParams {
 /** 写研判 的参数 */
 export interface WriteResearchNoteParams {
   stockCode: string;
+  title?: string;
   stance: string;
   reason: string;
 }
@@ -149,7 +165,7 @@ export interface ResolveAlertParams {
   alertId: string;
 }
 
-/** 标记预警触发（系统） 的参数 */
+/** 标记预警触发 的参数 */
 export interface MarkAlertTriggeredParams {
   alertId: string;
 }
@@ -242,6 +258,14 @@ export function createClient(schema: OntologySchema, dbPath: string) {
       },
     },
     actions: {
+      /** 新建组合 */
+      createPortfolio(params: CreatePortfolioParams): ActionResult {
+        return actionSvc.execute('createPortfolio', params as unknown as Record<string, Value>);
+      },
+      /** 改研判 */
+      updateResearchNote(params: UpdateResearchNoteParams): ActionResult {
+        return actionSvc.execute('updateResearchNote', params as unknown as Record<string, Value>);
+      },
       /** 加自选 */
       addToWatchlist(params: AddToWatchlistParams): ActionResult {
         return actionSvc.execute('addToWatchlist', params as unknown as Record<string, Value>);
@@ -262,7 +286,7 @@ export function createClient(schema: OntologySchema, dbPath: string) {
       resolveAlert(params: ResolveAlertParams): ActionResult {
         return actionSvc.execute('resolveAlert', params as unknown as Record<string, Value>);
       },
-      /** 标记预警触发（系统） */
+      /** 标记预警触发 */
       markAlertTriggered(params: MarkAlertTriggeredParams): ActionResult {
         return actionSvc.execute('markAlertTriggered', params as unknown as Record<string, Value>);
       },
