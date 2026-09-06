@@ -6,3 +6,4 @@ packages/engine/test/generated/
 .env
 .env.*
 !.env.example
+.DS_Store
