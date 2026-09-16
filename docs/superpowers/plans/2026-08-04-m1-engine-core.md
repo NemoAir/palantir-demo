@@ -4,7 +4,7 @@
 
 **Goal:** 建成题材无关的本体引擎核心（OMS 元数据服务 + store 对象库 + Funnel 物化管道 + OSS 查询服务）与 CLI，把科创板50 真实数据物化进本体并可查询/遍历，通过 spec §9.3 M1 全部验收项。
 
-**Architecture:** 声明式 schema（`ontology/`，Language 层）→ OMS 加载校验注册 → store 按元数据动态建 SQLite 表（每对象类型一张表，物化路线）→ Funnel 从 `datasets/*.csv` 幂等 upsert → OSS 提供过滤/聚合/链接遍历。引擎零题材词汇；链接 v1 全部为外键型（v1 无多对多，YAGNI），遍历走 FK 索引查询、不建链接表（对应官方"仅多对多链接才由数据集支撑"）。
+**Architecture:** 声明式 schema（[`ontology/`](../../../ontology/)，Language 层）→ OMS 加载校验注册 → store 按元数据动态建 SQLite 表（每对象类型一张表，物化路线）→ Funnel 从 `datasets/*.csv` 幂等 upsert → OSS 提供过滤/聚合/链接遍历。引擎零题材词汇；链接 v1 全部为外键型（v1 无多对多，YAGNI），遍历走 FK 索引查询、不建链接表（对应官方"仅多对多链接才由数据集支撑"）。
 
 **Tech Stack:** Node ≥ 20、TypeScript 5 strict、pnpm workspace、better-sqlite3（同步 API 利于测试）、csv-parse、vitest、CLI 用 Node 原生 `util.parseArgs`（零框架依赖）。
 
@@ -14,7 +14,7 @@
 - 所有 schema 的 `apiName` 必须匹配 `^[A-Za-z][A-Za-z0-9_]*$`（OMS 校验强制）——这同时是 SQL 标识符注入防线：动态 SQL 中的表名/列名只允许来自已注册元数据，值一律参数绑定。
 - 数字属性解析失败：nullable → 置空并记入报告 `nulled`；非空列 → 整行跳过记入 `skipped`；主键缺失 → 整行跳过。**绝不静默丢弃**（spec §9.4）。
 - 每任务 TDD：先写失败测试再实现；每任务结束 commit（git 规范见项目 PROGRESS 约定：标题写改了什么，正文写为什么）。
-- 数据集区 `datasets/` 只放真实拉取或种子 CSV；引擎不做任何网络请求。
+- 数据集区 [`datasets/`](../../../datasets/) 只放真实拉取或种子 CSV；引擎不做任何网络请求。
 - TypeScript `strict: true`；测试命令统一 `pnpm --filter engine test`。
 
 ## 文件结构（M1 全景）
@@ -61,9 +61,9 @@ palantir-demo/
 ### Task 1: Workspace 脚手架
 
 **Files:**
-- Create: `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.gitignore`
-- Create: `packages/engine/package.json`, `packages/engine/tsconfig.json`, `packages/engine/vitest.config.ts`
-- Test: `packages/engine/test/smoke.test.ts`
+- Create: [`package.json`](../../../package.json), [`pnpm-workspace.yaml`](../../../pnpm-workspace.yaml), [`tsconfig.base.json`](../../../tsconfig.base.json), `.gitignore`
+- Create: [`packages/engine/package.json`](../../../packages/engine/package.json), [`packages/engine/tsconfig.json`](../../../packages/engine/tsconfig.json), [`packages/engine/vitest.config.ts`](../../../packages/engine/vitest.config.ts)
+- Test: [`packages/engine/test/smoke.test.ts`](../../../packages/engine/test/smoke.test.ts)
 
 **Interfaces:**
 - Consumes: 无
@@ -71,7 +71,7 @@ palantir-demo/
 
 - [ ] **Step 1: 写根配置与包配置**
 
-`package.json`（根）:
+[`package.json`](../../../package.json)（根）:
 ```json
 {
   "name": "palantir-demo",
@@ -83,13 +83,13 @@ palantir-demo/
 }
 ```
 
-`pnpm-workspace.yaml`:
+[`pnpm-workspace.yaml`](../../../pnpm-workspace.yaml):
 ```yaml
 packages:
   - "packages/*"
 ```
 
-`tsconfig.base.json`:
+[`tsconfig.base.json`](../../../tsconfig.base.json):
 ```json
 {
   "compilerOptions": {
@@ -114,7 +114,7 @@ dist/
 *.db-journal
 ```
 
-`packages/engine/package.json`:
+[`packages/engine/package.json`](../../../packages/engine/package.json):
 ```json
 {
   "name": "engine",
@@ -139,7 +139,7 @@ dist/
 }
 ```
 
-`packages/engine/tsconfig.json`:
+[`packages/engine/tsconfig.json`](../../../packages/engine/tsconfig.json):
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -148,7 +148,7 @@ dist/
 }
 ```
 
-`packages/engine/vitest.config.ts`:
+[`packages/engine/vitest.config.ts`](../../../packages/engine/vitest.config.ts):
 ```ts
 import { defineConfig } from 'vitest/config';
 export default defineConfig({ test: { include: ['test/**/*.test.ts'] } });
@@ -156,7 +156,7 @@ export default defineConfig({ test: { include: ['test/**/*.test.ts'] } });
 
 - [ ] **Step 2: 写冒烟测试（先失败——依赖未装）**
 
-`packages/engine/test/smoke.test.ts`:
+[`packages/engine/test/smoke.test.ts`](../../../packages/engine/test/smoke.test.ts):
 ```ts
 import { describe, it, expect } from 'vitest';
 import Database from 'better-sqlite3';
@@ -190,8 +190,8 @@ git commit -m "chore(m1): pnpm workspace + engine 包脚手架（sqlite/vitest �
 ### Task 2: 元模型类型定义（types.ts）
 
 **Files:**
-- Create: `packages/engine/src/types.ts`
-- Test: `packages/engine/test/fixtures/zoo.ts`（同时作为类型的第一个使用者）
+- Create: [`packages/engine/src/types.ts`](../../../packages/engine/src/types.ts)
+- Test: [`packages/engine/test/fixtures/zoo.ts`](../../../packages/engine/test/fixtures/zoo.ts)（同时作为类型的第一个使用者）
 
 **Interfaces:**
 - Consumes: 无
@@ -205,7 +205,7 @@ git commit -m "chore(m1): pnpm workspace + engine 包脚手架（sqlite/vitest �
 
 - [ ] **Step 1: 写类型文件（类型无运行时行为，此任务以"夹具编译通过"为测试）**
 
-`packages/engine/src/types.ts`:
+[`packages/engine/src/types.ts`](../../../packages/engine/src/types.ts):
 ```ts
 /** 属性值类型。date 以 ISO 字符串存取。 */
 export type PropertyType = 'string' | 'number' | 'boolean' | 'date';
@@ -269,7 +269,7 @@ export function defineOntology(schema: OntologySchema): OntologySchema {
 
 - [ ] **Step 2: 写测试夹具（题材无关的动物园本体，作为类型使用者）**
 
-`packages/engine/test/fixtures/zoo.ts`:
+[`packages/engine/test/fixtures/zoo.ts`](../../../packages/engine/test/fixtures/zoo.ts):
 ```ts
 import { defineOntology } from '../../src/types.js';
 
@@ -343,8 +343,8 @@ git commit -m "feat(m1): 元模型类型定义 + 动物园测试夹具（题材�
 ### Task 3: OMS——schema 加载/校验/注册（oms.ts）
 
 **Files:**
-- Create: `packages/engine/src/oms.ts`
-- Test: `packages/engine/test/oms.test.ts`
+- Create: [`packages/engine/src/oms.ts`](../../../packages/engine/src/oms.ts)
+- Test: [`packages/engine/test/oms.test.ts`](../../../packages/engine/test/oms.test.ts)
 
 **Interfaces:**
 - Consumes: Task 2 全部类型
@@ -360,7 +360,7 @@ git commit -m "feat(m1): 元模型类型定义 + 动物园测试夹具（题材�
 
 - [ ] **Step 1: 写失败测试**
 
-`packages/engine/test/oms.test.ts`:
+[`packages/engine/test/oms.test.ts`](../../../packages/engine/test/oms.test.ts):
 ```ts
 import { describe, it, expect } from 'vitest';
 import { loadOntology, OntologyValidationError } from '../src/oms.js';
@@ -441,7 +441,7 @@ Expected: FAIL（`../src/oms.js` 不存在）。
 
 - [ ] **Step 3: 实现 oms.ts**
 
-`packages/engine/src/oms.ts`:
+[`packages/engine/src/oms.ts`](../../../packages/engine/src/oms.ts):
 ```ts
 import type { LinkTypeDef, ObjectTypeDef, OntologySchema } from './types.js';
 
@@ -571,8 +571,8 @@ git commit -m "feat(m1): OMS 元数据服务——schema 校验(定位报错/标
 ### Task 4: A股投研本体 schema（Language 层实例）
 
 **Files:**
-- Create: `ontology/astock.ontology.ts`
-- Test: `packages/engine/test/astock-schema.test.ts`
+- Create: [`ontology/astock.ontology.ts`](../../../ontology/astock.ontology.ts)
+- Test: [`packages/engine/test/astock-schema.test.ts`](../../../packages/engine/test/astock-schema.test.ts)
 
 **Interfaces:**
 - Consumes: `defineOntology`（Task 2）、`loadOntology`（Task 3）
@@ -580,7 +580,7 @@ git commit -m "feat(m1): OMS 元数据服务——schema 校验(定位报错/标
 
 - [ ] **Step 1: 写失败测试**
 
-`packages/engine/test/astock-schema.test.ts`:
+[`packages/engine/test/astock-schema.test.ts`](../../../packages/engine/test/astock-schema.test.ts):
 ```ts
 import { describe, it, expect } from 'vitest';
 import { loadOntology } from '../src/oms.js';
@@ -618,7 +618,7 @@ Expected: FAIL（`ontology/astock.ontology.js` 不存在）。
 
 - [ ] **Step 3: 写 schema**
 
-`ontology/astock.ontology.ts`:
+[`ontology/astock.ontology.ts`](../../../ontology/astock.ontology.ts):
 ```ts
 import { defineOntology } from '../packages/engine/src/types.js';
 
@@ -770,7 +770,7 @@ Expected: PASS。注意：`Position.stock` 与 `ResearchNote.stock`、`Alert.sto
 
 - [ ] **Step 5: 补 OMS 遍历名唯一性校验（Task 3 的收尾强化——同一对象类型的出入遍历名不得重复）**
 
-在 `packages/engine/src/oms.ts` 的 `loadOntology` 中、`return new OntologyRegistry(schema)` 之前追加：
+在 [`packages/engine/src/oms.ts`](../../../packages/engine/src/oms.ts) 的 `loadOntology` 中、`return new OntologyRegistry(schema)` 之前追加：
 ```ts
   // 同一对象类型上的遍历名必须唯一（如 Stock 的 positions/researchNotes/alerts 不得撞名）
   const traverseNames = new Map<string, Set<string>>();
@@ -787,7 +787,7 @@ Expected: PASS。注意：`Position.stock` 与 `ResearchNote.stock`、`Alert.sto
   }
 ```
 
-对应测试补进 `packages/engine/test/oms.test.ts`:
+对应测试补进 [`packages/engine/test/oms.test.ts`](../../../packages/engine/test/oms.test.ts):
 ```ts
   it('拒绝同一对象类型上的重复遍历名', () => {
     const s = clone();
@@ -819,8 +819,8 @@ git commit -m "feat(m1): A股投研本体 schema（6对象/5链接·科创板50�
 ### Task 5: store——元数据驱动的对象库（store.ts）
 
 **Files:**
-- Create: `packages/engine/src/store.ts`
-- Test: `packages/engine/test/store.test.ts`
+- Create: [`packages/engine/src/store.ts`](../../../packages/engine/src/store.ts)
+- Test: [`packages/engine/test/store.test.ts`](../../../packages/engine/test/store.test.ts)
 
 **Interfaces:**
 - Consumes: `OntologyRegistry`（Task 3）
@@ -836,7 +836,7 @@ git commit -m "feat(m1): A股投研本体 schema（6对象/5链接·科创板50�
 
 - [ ] **Step 1: 写失败测试**
 
-`packages/engine/test/store.test.ts`:
+[`packages/engine/test/store.test.ts`](../../../packages/engine/test/store.test.ts):
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
@@ -895,7 +895,7 @@ Expected: FAIL（`../src/store.js` 不存在）。
 
 - [ ] **Step 3: 实现 store.ts**
 
-`packages/engine/src/store.ts`:
+[`packages/engine/src/store.ts`](../../../packages/engine/src/store.ts):
 ```ts
 import type Database from 'better-sqlite3';
 import type { OntologyRegistry } from './oms.js';
@@ -1023,9 +1023,9 @@ git commit -m "feat(m1): store 对象库——元数据驱动 DDL/upsert/白名�
 ### Task 6: Funnel——CSV 物化管道（funnel.ts）
 
 **Files:**
-- Create: `packages/engine/src/funnel.ts`
-- Create: `packages/engine/test/fixtures/animals.csv`, `packages/engine/test/fixtures/keepers.csv`
-- Test: `packages/engine/test/funnel.test.ts`
+- Create: [`packages/engine/src/funnel.ts`](../../../packages/engine/src/funnel.ts)
+- Create: [`packages/engine/test/fixtures/animals.csv`](../../../packages/engine/test/fixtures/animals.csv), [`packages/engine/test/fixtures/keepers.csv`](../../../packages/engine/test/fixtures/keepers.csv)
+- Test: [`packages/engine/test/funnel.test.ts`](../../../packages/engine/test/funnel.test.ts)
 
 **Interfaces:**
 - Consumes: `ObjectStore`（Task 5）、`OntologyRegistry`（Task 3）
@@ -1036,14 +1036,14 @@ git commit -m "feat(m1): store 对象库——元数据驱动 DDL/upsert/白名�
 
 - [ ] **Step 1: 写夹具 CSV（含脏数据）**
 
-`packages/engine/test/fixtures/keepers.csv`:
+[`packages/engine/test/fixtures/keepers.csv`](../../../packages/engine/test/fixtures/keepers.csv):
 ```csv
 id,fullName
 K1,张三
 K2,李四
 ```
 
-`packages/engine/test/fixtures/animals.csv`（注意：A3 体重为空串→nulled；1 行缺主键→skipped；A5 体重非数字→nulled）:
+[`packages/engine/test/fixtures/animals.csv`](../../../packages/engine/test/fixtures/animals.csv)（注意：A3 体重为空串→nulled；1 行缺主键→skipped；A5 体重非数字→nulled）:
 ```csv
 tag,name,weightKg,keeperId
 A1,大象,3000,K1
@@ -1055,7 +1055,7 @@ A5,鲸鱼,abc,K2
 
 - [ ] **Step 2: 写失败测试**
 
-`packages/engine/test/funnel.test.ts`:
+[`packages/engine/test/funnel.test.ts`](../../../packages/engine/test/funnel.test.ts):
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
@@ -1116,7 +1116,7 @@ Expected: FAIL（`../src/funnel.js` 不存在）。
 
 - [ ] **Step 4: 实现 funnel.ts**
 
-`packages/engine/src/funnel.ts`:
+[`packages/engine/src/funnel.ts`](../../../packages/engine/src/funnel.ts):
 ```ts
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -1268,8 +1268,8 @@ git commit -m "feat(m1): Funnel CSV 物化——幂等 upsert/空值策略/脏�
 ### Task 7: OSS——查询/聚合/链接遍历（oss.ts）
 
 **Files:**
-- Create: `packages/engine/src/oss.ts`
-- Test: `packages/engine/test/oss.test.ts`
+- Create: [`packages/engine/src/oss.ts`](../../../packages/engine/src/oss.ts)
+- Test: [`packages/engine/test/oss.test.ts`](../../../packages/engine/test/oss.test.ts)
 
 **Interfaces:**
 - Consumes: `ObjectStore`（Task 5，取 `db`/`registry`）、`OntologyRegistry.linkByTraverseName`（Task 3/4）
@@ -1283,7 +1283,7 @@ git commit -m "feat(m1): Funnel CSV 物化——幂等 upsert/空值策略/脏�
 
 - [ ] **Step 1: 写失败测试**
 
-`packages/engine/test/oss.test.ts`:
+[`packages/engine/test/oss.test.ts`](../../../packages/engine/test/oss.test.ts):
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
@@ -1362,7 +1362,7 @@ Expected: FAIL（`../src/oss.js` 不存在）。
 
 - [ ] **Step 3: 实现 oss.ts**
 
-`packages/engine/src/oss.ts`:
+[`packages/engine/src/oss.ts`](../../../packages/engine/src/oss.ts):
 ```ts
 import type { ObjectRow, ObjectStore } from './store.js';
 
@@ -1469,17 +1469,17 @@ git commit -m "feat(m1): OSS 查询服务——过滤/聚合/双向链接遍历�
 > 本任务由 Claude 在会话内执行（调用本机金融技能），产出四个 CSV。**引擎代码不涉网**。
 
 **Files:**
-- Create: `datasets/stocks.csv`（50 行）、`datasets/industries.csv`、`datasets/portfolios.csv`、`datasets/positions.csv`、`datasets/README.md`
+- Create: [`datasets/stocks.csv`](../../../datasets/stocks.csv)（50 行）、[`datasets/industries.csv`](../../../datasets/industries.csv)、[`datasets/portfolios.csv`](../../../datasets/portfolios.csv)、[`datasets/positions.csv`](../../../datasets/positions.csv)、[`datasets/README.md`](../../../datasets/README.md)
 
 **Interfaces:**
-- Consumes: `ontology/astock.ontology.ts` 声明的 datasource 文件名与属性 apiName（CSV 表头必须逐一对应）
+- Consumes: [`ontology/astock.ontology.ts`](../../../ontology/astock.ontology.ts) 声明的 datasource 文件名与属性 apiName（CSV 表头必须逐一对应）
 - Produces: M1 验收所需真实数据；后续里程碑的种子数据
 
 - [ ] **Step 1: 拉取科创板50 成分股清单与行情估值**
 
 用 `hithink-astock-selector` 或 `hithink-basicinfo-query` 技能查询"科创50 成分股"获得 50 只成分；用 `hithink-market-query` / `hithink-finance-query` 补齐最新价、总市值、PE(TTM)、PB、申万一级行业。
 
-- [ ] **Step 2: 写 `datasets/stocks.csv`**
+- [ ] **Step 2: 写 [`datasets/stocks.csv`](../../../datasets/stocks.csv)**
 
 表头（与 schema 属性 apiName 严格一致）：
 ```csv
@@ -1489,7 +1489,7 @@ code,name,industryCode,latestPrice,marketCapYi,pe,pb
 ```
 未盈利企业 pe 留空（如 `688xxx,某某,sw_yy,12.3,150.2,,3.1`）——**保留真实空值，不造数**。行业代码用 `sw_` 前缀 + 拼音缩写（industries.csv 主键一致即可）。
 
-- [ ] **Step 3: 写 `datasets/industries.csv`**
+- [ ] **Step 3: 写 [`datasets/industries.csv`](../../../datasets/industries.csv)**
 
 覆盖 stocks.csv 中出现的全部行业代码：
 ```csv
@@ -1499,7 +1499,7 @@ sw_yy,医药生物
 ...
 ```
 
-- [ ] **Step 4: 写种子 `datasets/portfolios.csv` 与 `datasets/positions.csv`**
+- [ ] **Step 4: 写种子 [`datasets/portfolios.csv`](../../../datasets/portfolios.csv) 与 [`datasets/positions.csv`](../../../datasets/positions.csv)**
 
 ```csv
 id,name,initialCash,cash
@@ -1512,7 +1512,7 @@ POS2,P1,688111,300,156.53
 ```
 约束：`cash = initialCash - Σ(quantity×costPrice)` 必须自洽（此例 1000000 - 500×80 - 300×156.53 = 913041 → 以实际选定的持仓股与成本价重算，写入自洽值）；`stockCode` 必须存在于 stocks.csv。
 
-- [ ] **Step 5: 写 `datasets/README.md`**
+- [ ] **Step 5: 写 [`datasets/README.md`](../../../datasets/README.md)**
 
 记录：数据拉取日期、来源技能、字段说明、已知空值（哪些股票 PE 为空及原因）、刷新方法（"让 Claude 重跑 Task 8 步骤 1-3"）。
 
@@ -1546,7 +1546,7 @@ git commit -m "data(m1): 科创板50 真实行情估值数据 + 组合种子（P
 - Test: 手动冒烟（CLI 是验收工具本身，核心逻辑已被 Task 3–7 单测覆盖；CLI 只做参数解析与打印，不再写自动化测试——YAGNI）
 
 **Interfaces:**
-- Consumes: 全部前序模块 + `ontology/astock.ontology.ts` + `datasets/`
+- Consumes: 全部前序模块 + [`ontology/astock.ontology.ts`](../../../ontology/astock.ontology.ts) + [`datasets/`](../../../datasets/)
 - Produces: 命令 `pnpm cli <load|materialize|query|get|traverse|count>`（M1 验收执行面）
 
 - [ ] **Step 1: 实现 cli.ts**
@@ -1682,8 +1682,8 @@ git commit -m "feat(m1): CLI 冒烟工具（load/materialize/query/get/traverse/
 ### Task 10: M1 验收执行与收尾
 
 **Files:**
-- Modify: `PROGRESS.md`（M1 状态翻 ✅、游标指向 M2 计划）
-- Create: `docs/acceptance/m1-evidence.md`（验收证据清单）
+- Modify: [`PROGRESS.md`](../../../PROGRESS.md)（M1 状态翻 ✅、游标指向 M2 计划）
+- Create: [`docs/acceptance/m1-evidence.md`](../../acceptance/m1-evidence.md)（验收证据清单）
 
 **Interfaces:**
 - Consumes: spec §9.3 M1 验收清单、全部前序产出
@@ -1701,7 +1701,7 @@ git commit -m "feat(m1): CLI 冒烟工具（load/materialize/query/get/traverse/
 | 6 | 重跑 `pnpm cli materialize` 后 `pnpm cli count Stock` | 仍为 50（幂等） |
 | 7 | `grep -rniE "stock|astock|portfolio|industry" packages/engine/src/` | 无输出（题材无关约束） |
 
-每项把实际命令输出粘贴进 `docs/acceptance/m1-evidence.md`（含日期与 git commit hash）。
+每项把实际命令输出粘贴进 [`docs/acceptance/m1-evidence.md`](../../acceptance/m1-evidence.md)（含日期与 git commit hash）。
 
 - [ ] **Step 2: 更新 PROGRESS.md**
 

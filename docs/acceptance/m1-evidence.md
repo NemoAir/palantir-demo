@@ -79,7 +79,7 @@ $ grep -rniE "stock|astock|portfolio|industry" packages/engine/src/
 |---|---|---|
 | 1 | types.ts 注释示例用金融词（'stocks.csv'/'industry'/'stocks'） | 改动物园词汇（与测试夹具一致） |
 | 2 | oms.ts 注释示例用金融词（Stock 的 positions/...） | 改题材中性表述 |
-| 3 | **cli.ts 在 src/ 内 import 具体本体 astock**（结构性耦合） | 移出 `src/` 至包根 `packages/engine/cli.ts`——CLI 是"组装引擎+本体"的应用层，不属题材无关引擎 |
+| 3 | **cli.ts 在 src/ 内 import 具体本体 astock**（结构性耦合） | 移出 `src/` 至包根 [`packages/engine/cli.ts`](../../packages/engine/cli.ts)——CLI 是"组装引擎+本体"的应用层，不属题材无关引擎 |
 | 4 | oss.ts Filter 联合类型在 else 链尾部否定收窄失败（tsc 报错） | 改 `'value' in f` 判别（in 收窄机制最稳） |
 | 5 | ontology/ 文件超出 engine tsconfig 的 rootDir | 去掉 rootDir 限制 |
 | 6 | 根包无 `type: module`，ontology/ 被判 CJS | 根 package.json 补 `"type": "module"` |

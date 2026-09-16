@@ -46,7 +46,7 @@ palantir-demo/
 └── docs/
 ```
 
-约束：`engine` 不得 import 任何题材词汇——所有"股票"概念只存在于 `ontology/` 与 `datasets/`。换题材 = 换一份 schema + 一批数据集。
+约束：`engine` 不得 import 任何题材词汇——所有"股票"概念只存在于 [`ontology/`](../../../ontology/) 与 [`datasets/`](../../../datasets/)。换题材 = 换一份 schema + 一批数据集。
 
 **数据接入方式**：用户环境的金融技能（hithink/mx 系列）是 Claude 会话内技能。实战时由 Claude 在会话中调技能拉真实数据、落成 `datasets/*.csv`；引擎 Funnel 从文件物化。这复刻了 Foundry 的 Data Connection → Dataset → Ontology 链路（Claude 会话扮演数据接入层）。
 

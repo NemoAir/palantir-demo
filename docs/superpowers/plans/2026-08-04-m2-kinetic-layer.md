@@ -20,8 +20,8 @@
 | 3 | Funnel 重放 | `materializeCsv` 完成 upsert 后调用 `store.replayEdits(objectType)`（账本按 updatedAt 顺序覆盖物化表） | 编辑后改 CSV 重物化：源字段更新、编辑字段保持（Apply User Edits 实证） |
 | 4 | actions 执行器 | `ActionService.execute(apiName, params): ActionResult`；管线：参数类型/必填校验 → criteria 逐条求值（fail 返回 `{ok:false, failedCriterion, message}` 不落库）→ `apply(ctx,params)` 产 edits → `store.applyEdits` → sideEffects（通知落 `notifications` 表）；`ActionContext = {get, query}` 只读 | 成功路径/参数类型错/criteria 拒绝（返回名称）/副作用落表 |
 | 5 | functions 运行时 | `FunctionService.call(apiName, params): unknown`；只读 ctx；未注册报错 | 注册函数可调、拿到正确计算结果 |
-| 6 | astock 动能层 | `ontology/astock.actions.ts`（6 Action：addToWatchlist/tradeStock/writeResearchNote/setAlert/resolveAlert/markAlertTriggered）+ `ontology/astock.functions.ts`（3 Function：portfolioValuation/screenStocks/checkAlerts）；Stock 增 `isWatched` 编辑属性（nullable boolean，无源列——源 CSV 无此列，Funnel 需容忍 schema 属性缺列=全 null） | tradeStock 买/卖资金持仓校验、researchNote 创建带链接可遍历、alert 状态机 |
-| 7 | CLI 扩展 + M2 验收 | `pnpm cli action <name> --param k=v`、`pnpm cli fn <name>`、`pnpm cli audit`；spec §9.3 M2 五项逐项执行附证据归档 `docs/acceptance/m2-evidence.md` | 五项验收全过 |
+| 6 | astock 动能层 | [`ontology/astock.actions.ts`](../../../ontology/astock.actions.ts)（6 Action：addToWatchlist/tradeStock/writeResearchNote/setAlert/resolveAlert/markAlertTriggered）+ [`ontology/astock.functions.ts`](../../../ontology/astock.functions.ts)（3 Function：portfolioValuation/screenStocks/checkAlerts）；Stock 增 `isWatched` 编辑属性（nullable boolean，无源列——源 CSV 无此列，Funnel 需容忍 schema 属性缺列=全 null） | tradeStock 买/卖资金持仓校验、researchNote 创建带链接可遍历、alert 状态机 |
+| 7 | CLI 扩展 + M2 验收 | `pnpm cli action <name> --param k=v`、`pnpm cli fn <name>`、`pnpm cli audit`；spec §9.3 M2 五项逐项执行附证据归档 [`docs/acceptance/m2-evidence.md`](../../acceptance/m2-evidence.md) | 五项验收全过 |
 
 ## 显式简化
 - 通知（side effect）只落 `notifications` 表不真推送（spec §6 既定）。

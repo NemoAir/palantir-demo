@@ -61,7 +61,7 @@
 - **判据一句话：谁拥有控制流。** 循环写在代码里 = workflow；模型决定循环何时停 = agent。
 - 两者是谱系不是二元：单次调用 → 提示链 → 路由 → 并行化 → 编排者-工作者 → 评估-优化循环（以上均为 workflow 模式）→ 自主 agent。
 - 选型：步骤可枚举/要确定性/要控成本 → workflow；路径事先不可知（调研、调试、模糊需求）→ agent；**最常见是混合**——外层 workflow 钉死阶段，阶段内 agent 自主。
-- 本仓库实例：`examples/daily-patrol.sh` 是 workflow（物化→巡逻，顺序定死）；巡逻那步内部是 agent（模型自主决定扫描→逐个落账→写研判的调用序列）。
+- 本仓库实例：[`examples/daily-patrol.sh`](../../examples/daily-patrol.sh) 是 workflow（物化→巡逻，顺序定死）；巡逻那步内部是 agent（模型自主决定扫描→逐个落账→写研判的调用序列）。
 
 ## 5. 最佳实践清单
 
@@ -78,7 +78,7 @@
 
 论点：**多少个 agent 并发，写入口只有一条治理管线**——护栏长在写入口上，不靠 prompt 求自律。支撑机制是"结构化拒绝"：
 
-- 类型层（`packages/engine/src/actions.ts`）：拒绝是三态可辨识联合，不是异常——
+- 类型层（[`packages/engine/src/actions.ts`](../../packages/engine/src/actions.ts)）：拒绝是三态可辨识联合，不是异常——
   `{ok:true,…} | {ok:false, stage:'params', message} | {ok:false, stage:'criteria', failedCriterion, message}`。
 - 执行器：参数校验给到具体字段与期望类型；criteria 逐条命名求值，失败返回该条 apiName + 人话 message（如 `cashSufficient：现金余额不足以完成买入`）。
 - HTTP 层：**业务拒绝也是 200**——拒绝是合法业务结果，结构化透传，HTTP 层不翻译业务语义。

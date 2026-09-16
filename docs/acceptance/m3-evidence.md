@@ -10,7 +10,7 @@ vitest：用动物园本体生成客户端 → 动态 import → 类型化查询
 
 ## #2 生成 astock OSDK + 编译期防线 ✅
 
-`pnpm --filter engine gen-osdk` → `osdk/astock-client.ts`；demo 实跑输出（真实数据）：
+`pnpm --filter engine gen-osdk` → [`osdk/astock-client.ts`](../../osdk/astock-client.ts)；demo 实跑输出（真实数据）：
 
 ```
 688111 金山办公 PE=35.09 自选=false

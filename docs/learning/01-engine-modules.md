@@ -26,7 +26,7 @@
 ## 1. 先解释贯穿一切的词：schema（模式/蓝图）
 
 - **是什么**：对"数据长什么样"的正式定义。比喻：Excel 表的**表头 + 填表须知**——"这张表叫 Stock，有代码、名称、价格三列，代码不能重复不能空（主键）"。schema 不含数据本身，只含规则。
-- **本项目**：`ontology/astock.ontology.ts` 一个文件，用声明的方式写下全部对象类型、属性、链接类型、Action 类型。
+- **本项目**：[`ontology/astock.ontology.ts`](../../ontology/astock.ontology.ts) 一个文件，用声明的方式写下全部对象类型、属性、链接类型、Action 类型。
 - **iOS 类比**：Core Data 的 `.xcdatamodeld` 模型文件——你在 Xcode 里拖 Entity/Attribute/Relationship，框架据此建表。我们的 schema 就是它的纯代码版。
 - **对应 Palantir**：Ontology Language（官方三分法的"语言"层——描述语义元素 + 动能元素的语言）。
 - **主键（primary key）**：唯一身份证。Stock 的主键是股票代码（688981 全世界只有一个中芯国际）。Funnel 靠它判断"这行 CSV 是新对象还是老对象的更新"。
